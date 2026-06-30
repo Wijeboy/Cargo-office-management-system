@@ -170,8 +170,10 @@ export default function DashboardLayout({ children }) {
         </header>
 
         {/* ── Page content ── */}
-        <main className="flex-1 overflow-y-auto p-6 animate-fade-in">
-          {children}
+        <main className="flex-1 overflow-y-auto animate-fade-in">
+          <div className="p-6 h-full">
+            {children}
+          </div>
         </main>
       </div>
     </div>

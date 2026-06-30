@@ -171,6 +171,21 @@ export default function Login() {
                   <span className="relative z-10">Sign In to Workspace</span>
                 )}
               </button>
+
+              <div className="relative flex py-1 items-center">
+                <div className="flex-grow border-t border-outline-variant/30"></div>
+                <span className="flex-shrink mx-4 text-xs text-on-surface-variant">or</span>
+                <div className="flex-grow border-t border-outline-variant/30"></div>
+              </div>
+
+              <Link
+                to="/track-parcel"
+                className="flex items-center justify-center gap-2 border border-outline-variant text-[#009adb] hover:text-[#009adb]/85 font-semibold text-sm py-2.5 rounded-lg hover:bg-surface-container-low transition-all duration-200"
+              >
+                <span className="material-symbols-outlined text-base">location_searching</span>
+                Track a Parcel
+              </Link>
+
             </form>
 
             <div className="mt-6 text-center">

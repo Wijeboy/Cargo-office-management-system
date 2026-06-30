@@ -20,6 +20,7 @@ import WarehouseList from './pages/warehouse/WarehouseList';
 import UserList from './pages/users/UserList';
 import MyProfile from './pages/profile/MyProfile';
 import NotFound from './pages/NotFound';
+import PublicTrackCargo from './pages/public/PublicTrackCargo';
 
 // ─── Protected Route wrapper ──────────────────────────────
 function ProtectedRoute({ children }) {
@@ -43,7 +44,11 @@ function PublicRoute({ children }) {
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public auth routes */}
+      {/* Fully public routes (no auth required, ever) */}
+      <Route path="/track-parcel" element={<PublicTrackCargo />} />
+      <Route path="/not-found" element={<NotFound />} />
+
+      {/* Public auth routes (redirect to dashboard if already logged in) */}
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/signup" element={<PublicRoute><SignUp /></PublicRoute>} />
       <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
@@ -59,10 +64,10 @@ function AppRoutes() {
       <Route path="/users" element={<ProtectedRoute><UserList /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><MyProfile /></ProtectedRoute>} />
 
-      {/* Redirects */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      {/* Root redirect */}
+      <Route path="/" element={<Navigate to="/track-parcel" replace />} />
 
-      {/* 404 */}
+      {/* Catch-all 404 */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
