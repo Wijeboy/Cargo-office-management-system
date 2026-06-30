@@ -1,0 +1,108 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String   @default("OPERATIONS")
+  department   String?
+  phone        String?
+  avatar       String?
+  status       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Customer {
+  id               String     @id @default(cuid())
+  name             String
+  contactNo        String
+  email            String     @unique
+  address          String
+  company          String?
+  registrationDate DateTime   @default(now())
+  shipments        Shipment[]
+  invoices         Invoice[]
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+}
+
+model Shipment {
+  id             String          @id @default(cuid())
+  shipmentCode   String          @unique
+  customerId     String
+  customer       Customer        @relation(fields: [customerId], references: [id])
+  origin         String
+  destination    String
+  weight         Float
+  description    String?
+  status         String          @default("PENDING")
+  dispatchDate   DateTime?
+  deliveryDate   DateTime?
+  trackingEvents TrackingEvent[]
+  warehouseItems WarehouseItem[]
+  invoices       Invoice[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model TrackingEvent {
+  id          String   @id @default(cuid())
+  shipmentId  String
+  shipment    Shipment @relation(fields: [shipmentId], references: [id])
+  location    String
+  status      String
+  description String
+  timestamp   DateTime @default(now())
+}
+
+model Invoice {
+  id            String   @id @default(cuid())
+  invoiceNo     String   @unique
+  shipmentId    String
+  shipment      Shipment @relation(fields: [shipmentId], references: [id])
+  customerId    String
+  customer      Customer @relation(fields: [customerId], references: [id])
+  totalAmount   Float
+  tax           Float    @default(0)
+  paymentStatus String   @default("PENDING")
+  paymentMethod String?
+  notes         String?
+  date          DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model WarehouseItem {
+  id                String   @id @default(cuid())
+  shipmentId        String
+  shipment          Shipment @relation(fields: [shipmentId], references: [id])
+  warehouseLocation String
+  storageDate       DateTime @default(now())
+  status            String   @default("SAFE")
+  barcodeQR         String?
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      String   @default("INFO")
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
