@@ -16,6 +16,8 @@ import TrackCargo from './pages/cargo/TrackCargo';
 import CargoList from './pages/cargo/CargoList';
 import CustomerList from './pages/customers/CustomerList';
 import InvoiceList from './pages/finance/InvoiceList';
+import AddInvoice from './pages/finance/AddInvoice';
+import PrintReceipt from './pages/finance/PrintReceipt';
 import WarehouseList from './pages/warehouse/WarehouseList';
 import UserList from './pages/users/UserList';
 import MyProfile from './pages/profile/MyProfile';
@@ -60,6 +62,8 @@ function AppRoutes() {
       <Route path="/track" element={<ProtectedRoute><TrackCargo /></ProtectedRoute>} />
       <Route path="/customers" element={<ProtectedRoute><CustomerList /></ProtectedRoute>} />
       <Route path="/invoices" element={<ProtectedRoute><InvoiceList /></ProtectedRoute>} />
+      <Route path="/invoices/new" element={<ProtectedRoute><AddInvoice /></ProtectedRoute>} />
+      <Route path="/invoices/print" element={<ProtectedRoute><PrintReceipt /></ProtectedRoute>} />
       <Route path="/warehouse" element={<ProtectedRoute><WarehouseList /></ProtectedRoute>} />
       <Route path="/users" element={<ProtectedRoute><UserList /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><MyProfile /></ProtectedRoute>} />

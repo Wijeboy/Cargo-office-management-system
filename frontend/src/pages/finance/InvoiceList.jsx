@@ -1,5 +1,6 @@
 import { MOCK_INVOICES } from '../../data/mockData';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const STATUS = {
   PAID: { label: 'Paid', class: 'badge-success' },
@@ -8,6 +9,7 @@ const STATUS = {
 };
 
 export default function InvoiceList() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const filtered = MOCK_INVOICES.filter(inv =>
@@ -27,7 +29,10 @@ export default function InvoiceList() {
           <h1 className="page-title">Finance</h1>
           <p className="page-subtitle">Invoice management, payment tracking, and financial records.</p>
         </div>
-        <button className="btn-primary text-sm py-2 px-4 self-start sm:self-auto">
+        <button
+          className="btn-primary text-sm py-2 px-4 self-start sm:self-auto"
+          onClick={() => navigate('/invoices/new')}
+        >
           <span className="material-symbols-outlined text-base">add</span>
           New Invoice
         </button>

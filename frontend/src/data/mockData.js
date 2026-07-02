@@ -353,3 +353,49 @@ export const MOCK_CREDENTIALS = {
   'cs@logiflow.com': { password: 'cs123', userId: 'usr_004' },
   'warehouse@logiflow.com': { password: 'warehouse123', userId: 'usr_005' },
 };
+
+
+export const mockReceiptItems = [
+  {
+    title: "Cross-Country Freight",
+    details: "Chicago to Los Angeles - Logistics Route A-12",
+    quantity: 2,
+    rate: 8200.0,
+    amount: 16400.0,
+  },
+  {
+    title: "Terminal Handling Fees",
+    details: "Processing and priority loading surcharge",
+    quantity: 1,
+    rate: 1200.0,
+    amount: 1200.0,
+  },
+  {
+    title: "Insurance Premium",
+    details: "Comprehensive cargo protection plan",
+    quantity: 1,
+    rate: 800.0,
+    amount: 800.0,
+  },
+];
+
+export const mockAuditTrail = [
+  {
+    time: "Today, 14:32",
+    title: "Invoice finalized",
+    meta: "Admin: Marcus Sterling",
+    current: true,
+  },
+  {
+    time: "Today, 14:28",
+    title: "Payment verified",
+    meta: "Method: Wire Transfer",
+    current: false,
+  },
+  {
+    time: "Today, 11:15",
+    title: "Invoice generated",
+    meta: "Auto-generated from system",
+    current: false,
+  },
+];
