@@ -35,13 +35,13 @@ export default function CargoList() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="page-title">Shipments</h1>
+          <h1 className="page-title">Cargo Booking</h1>
           <p className="page-subtitle">Manage all cargo bookings and deliveries.</p>
         </div>
-        <button className="btn-primary text-sm py-2 px-4 self-start sm:self-auto">
+        <Link to="/cargo/new" className="btn-primary text-sm py-2 px-4 self-start sm:self-auto">
           <span className="material-symbols-outlined text-base">add</span>
-          New Shipment
-        </button>
+          New Booking
+        </Link>
       </div>
 
       {/* Filters */}
@@ -53,7 +53,7 @@ export default function CargoList() {
         <select className="input-field h-10 text-sm w-full sm:w-44" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
           {ALL_STATUSES.map(s => <option key={s} value={s}>{s === 'ALL' ? 'All Statuses' : STATUS_MAP[s]?.label || s}</option>)}
         </select>
-        <select className="input-field h-10 text-sm w-full sm:w-40" value={sortBy} onChange={e => setSortBy(e.target.value)}>
+        <select className="input-field h-10 text-sm w-full sm:w-52 min-w-[180px]" value={sortBy} onChange={e => setSortBy(e.target.value)}>
           <option value="createdAt">Sort: Newest</option>
           <option value="weight">Sort: Weight</option>
         </select>

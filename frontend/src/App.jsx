@@ -20,6 +20,11 @@ import WarehouseList from './pages/warehouse/WarehouseList';
 import UserList from './pages/users/UserList';
 import MyProfile from './pages/profile/MyProfile';
 import NotFound from './pages/NotFound';
+import CreateBooking from './pages/cargo/CreateBooking';
+import ShipmentScheduling from './pages/scheduling/ShipmentScheduling';
+import RouteManagement from './pages/routes/RouteManagement';
+import OperationsReports from './pages/reports/OperationsReports';
+import ShipmentHistory from './pages/history/ShipmentHistory';
 import PublicTrackCargo from './pages/public/PublicTrackCargo';
 
 // ─── Protected Route wrapper ──────────────────────────────
@@ -57,7 +62,12 @@ function AppRoutes() {
       {/* Protected app routes */}
       <Route path="/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
       <Route path="/cargo" element={<ProtectedRoute><CargoList /></ProtectedRoute>} />
+      <Route path="/cargo/new" element={<ProtectedRoute><CreateBooking /></ProtectedRoute>} />
+      <Route path="/scheduling" element={<ProtectedRoute><ShipmentScheduling /></ProtectedRoute>} />
       <Route path="/track" element={<ProtectedRoute><TrackCargo /></ProtectedRoute>} />
+      <Route path="/routes" element={<ProtectedRoute><RouteManagement /></ProtectedRoute>} />
+      <Route path="/reports" element={<ProtectedRoute><OperationsReports /></ProtectedRoute>} />
+      <Route path="/history" element={<ProtectedRoute><ShipmentHistory /></ProtectedRoute>} />
       <Route path="/customers" element={<ProtectedRoute><CustomerList /></ProtectedRoute>} />
       <Route path="/invoices" element={<ProtectedRoute><InvoiceList /></ProtectedRoute>} />
       <Route path="/warehouse" element={<ProtectedRoute><WarehouseList /></ProtectedRoute>} />
