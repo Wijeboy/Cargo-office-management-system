@@ -16,6 +16,7 @@ import CustomerPortalLayout from "./components/layout/CustomerPortalLayout";
 import AdminDashboard from "./pages/dashboard/AdminDashboard";
 import TrackCargo from "./pages/cargo/TrackCargo";
 import CargoList from "./pages/cargo/CargoList";
+
 import CustomerList from "./pages/customers/CustomerList";
 import CustomerRegistration from "./pages/customers/CustomerRegistration";
 import InquiryManagement from "./pages/customers/InquiryManagement";
@@ -23,14 +24,18 @@ import ComplaintManagement from "./pages/customers/ComplaintManagement";
 import FeedbackManagement from "./pages/customers/FeedbackManagement";
 import NotificationManagement from "./pages/customers/NotificationManagement";
 import CustomerPortalDashboard from "./pages/customers/CustomerPortalDashboard";
+
 import InvoiceList from "./pages/finance/InvoiceList";
+import AddInvoice from "./pages/finance/AddInvoice";
+import PrintReceipt from "./pages/finance/PrintReceipt";
+
 import WarehouseList from "./pages/warehouse/WarehouseList";
 import UserList from "./pages/users/UserList";
 import MyProfile from "./pages/profile/MyProfile";
 import NotFound from "./pages/NotFound";
 import PublicTrackCargo from "./pages/public/PublicTrackCargo";
 
-// Protected route using the original Admin layout
+// Protected route using the Admin layout
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
 
@@ -56,6 +61,7 @@ function CustomerServiceProtectedRoute({ children }) {
   );
 }
 
+// Protected route using the Customer Portal layout
 function CustomerPortalProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
 
@@ -126,7 +132,7 @@ function AppRoutes() {
         }
       />
 
-      {/* Existing protected Admin routes */}
+      {/* Admin routes */}
       <Route
         path="/dashboard"
         element={
@@ -164,6 +170,24 @@ function AppRoutes() {
       />
 
       <Route
+        path="/invoices/new"
+        element={
+          <ProtectedRoute>
+            <AddInvoice />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/invoices/print"
+        element={
+          <ProtectedRoute>
+            <PrintReceipt />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         path="/warehouse"
         element={
           <ProtectedRoute>
@@ -190,7 +214,7 @@ function AppRoutes() {
         }
       />
 
-      {/* Customer Service route */}
+      {/* Customer Service routes */}
       <Route
         path="/customers"
         element={
@@ -206,7 +230,7 @@ function AppRoutes() {
           <CustomerServiceProtectedRoute>
             <CustomerRegistration />
           </CustomerServiceProtectedRoute>
-         }
+        }
       />
 
       <Route
@@ -215,7 +239,7 @@ function AppRoutes() {
           <CustomerServiceProtectedRoute>
             <InquiryManagement />
           </CustomerServiceProtectedRoute>
-         }
+        }
       />
 
       <Route
@@ -225,7 +249,7 @@ function AppRoutes() {
             <ComplaintManagement />
           </CustomerServiceProtectedRoute>
         }
-     />
+      />
 
       <Route
         path="/customer-service/feedback"
@@ -234,7 +258,7 @@ function AppRoutes() {
             <FeedbackManagement />
           </CustomerServiceProtectedRoute>
         }
-    />
+      />
 
       <Route
         path="/customer-service/notifications"
@@ -242,17 +266,18 @@ function AppRoutes() {
           <CustomerServiceProtectedRoute>
             <NotificationManagement />
           </CustomerServiceProtectedRoute>
-         }
-    />
+        }
+      />
 
+      {/* Customer Portal route */}
       <Route
         path="/customer-portal/dashboard"
         element={
           <CustomerPortalProtectedRoute>
             <CustomerPortalDashboard />
           </CustomerPortalProtectedRoute>
-         }
-    />
+        }
+      />
 
       {/* Root redirect */}
       <Route path="/" element={<Navigate to="/track-parcel" replace />} />
