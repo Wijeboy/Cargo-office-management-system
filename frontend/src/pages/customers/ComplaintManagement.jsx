@@ -1,174 +1,172 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { MOCK_CUSTOMERS } from "../../data/mockData";
 
 const PAGE_SIZE = 5;
 
-const customerDefaults = [
+const complaintData = [
   {
-    customerId: "CUS-10021",
-    type: "Enterprise",
-    preferredChannel: "Email",
-    status: "Active",
-    openCases: 0,
+    id: "CMP-3018",
+    subject: "Cargo arrived damaged",
+    customer: "Amelia Silva",
+    email: "amelia.silva@example.com",
+    initials: "AS",
+    shipment: "SHP-89472A",
+    category: "Damage",
+    priority: "Urgent",
+    assignedTo: "Tharushi N.",
+    status: "Open",
   },
   {
-    customerId: "CUS-10022",
-    type: "Business",
-    preferredChannel: "SMS",
-    status: "Active",
-    openCases: 1,
+    id: "CMP-3019",
+    subject: "Unexpected delivery delay",
+    customer: "Ravi Kumar",
+    email: "ravi.kumar@example.com",
+    initials: "RK",
+    shipment: "SHP-89480B",
+    category: "Delay",
+    priority: "High",
+    assignedTo: "Thisuli S.",
+    status: "Investigating",
   },
   {
-    customerId: "CUS-10023",
-    type: "Individual",
-    preferredChannel: "Email",
-    status: "Pending",
-    openCases: 0,
+    id: "CMP-3020",
+    subject: "Incorrect invoice total",
+    customer: "Maya Fernando",
+    email: "maya.fernando@example.com",
+    initials: "MF",
+    shipment: "SHP-89495C",
+    category: "Billing",
+    priority: "Medium",
+    assignedTo: "Naduni P.",
+    status: "Resolved",
   },
   {
-    customerId: "CUS-10024",
-    type: "Enterprise",
-    preferredChannel: "Phone",
-    status: "Active",
-    openCases: 2,
+    id: "CMP-3021",
+    subject: "Missing cargo item",
+    customer: "Dilan Perera",
+    email: "dilan.perera@example.com",
+    initials: "DP",
+    shipment: "SHP-89503D",
+    category: "Loss",
+    priority: "High",
+    assignedTo: "Unassigned",
+    status: "Open",
   },
   {
-    customerId: "CUS-10025",
-    type: "Individual",
-    preferredChannel: "Email",
-    status: "Archived",
-    openCases: 0,
+    id: "CMP-3022",
+    subject: "Late notification received",
+    customer: "Sara Nimal",
+    email: "sara.nimal@example.com",
+    initials: "SN",
+    shipment: "SHP-89515E",
+    category: "Communication",
+    priority: "Low",
+    assignedTo: "Tharushi N.",
+    status: "Closed",
   },
 ];
 
-function getInitials(name = "") {
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+function priorityClasses(priority) {
+  switch (priority) {
+    case "Urgent":
+      return "bg-rose-100 text-rose-700";
+    case "High":
+      return "bg-red-100 text-red-700";
+    case "Medium":
+      return "bg-amber-100 text-amber-700";
+    case "Low":
+      return "bg-emerald-100 text-emerald-700";
+    default:
+      return "bg-slate-100 text-slate-600";
+  }
 }
 
 function statusClasses(status) {
   switch (status) {
-    case "Active":
-      return "bg-emerald-100 text-emerald-700";
-    case "Pending":
+    case "Open":
+      return "bg-rose-100 text-rose-700";
+    case "Investigating":
       return "bg-amber-100 text-amber-700";
-    case "Archived":
+    case "Resolved":
+      return "bg-emerald-100 text-emerald-700";
+    case "Closed":
       return "bg-slate-200 text-slate-600";
     default:
       return "bg-slate-100 text-slate-600";
   }
 }
 
-export default function CustomerList() {
-  const navigate = useNavigate();
+function avatarClasses(index) {
+  const styles = [
+    "bg-sky-100 text-sky-700",
+    "bg-violet-100 text-violet-700",
+    "bg-orange-100 text-orange-700",
+    "bg-emerald-100 text-emerald-700",
+    "bg-slate-200 text-slate-600",
+  ];
 
+  return styles[index % styles.length];
+}
+
+export default function ComplaintManagement() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
-  const [typeFilter, setTypeFilter] = useState("All");
+  const [priorityFilter, setPriorityFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
 
-  const customers = useMemo(
-    () =>
-      MOCK_CUSTOMERS.map((customer, index) => {
-        const defaults =
-          customerDefaults[index % customerDefaults.length];
+  const filteredComplaints = useMemo(() => {
+    const searchValue = search.trim().toLowerCase();
 
-        return {
-          ...customer,
-          customerId:
-            customer.customerId ||
-            customer.id ||
-            defaults.customerId,
-          type: customer.type || defaults.type,
-          preferredChannel:
-            customer.preferredChannel ||
-            defaults.preferredChannel,
-          status: customer.status || defaults.status,
-          openCases:
-            customer.openCases ?? defaults.openCases,
-        };
-      }),
-    []
-  );
-
-  const filteredCustomers = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
-
-    return customers.filter((customer) => {
+    return complaintData.filter((complaint) => {
       const matchesSearch =
-        !normalizedSearch ||
-        customer.name?.toLowerCase().includes(normalizedSearch) ||
-        customer.email?.toLowerCase().includes(normalizedSearch) ||
-        customer.contactNo
-          ?.toLowerCase()
-          .includes(normalizedSearch) ||
-        customer.customerId
-          ?.toLowerCase()
-          .includes(normalizedSearch);
+        !searchValue ||
+        complaint.id.toLowerCase().includes(searchValue) ||
+        complaint.customer.toLowerCase().includes(searchValue) ||
+        complaint.shipment.toLowerCase().includes(searchValue) ||
+        complaint.category.toLowerCase().includes(searchValue);
 
       const matchesStatus =
-        statusFilter === "All" ||
-        customer.status === statusFilter;
+        statusFilter === "All" || complaint.status === statusFilter;
 
-      const matchesType =
-        typeFilter === "All" ||
-        customer.type === typeFilter;
+      const matchesPriority =
+        priorityFilter === "All" || complaint.priority === priorityFilter;
 
-      return matchesSearch && matchesStatus && matchesType;
+      return matchesSearch && matchesStatus && matchesPriority;
     });
-  }, [customers, search, statusFilter, typeFilter]);
+  }, [search, statusFilter, priorityFilter]);
 
   const totalPages = Math.max(
     1,
-    Math.ceil(filteredCustomers.length / PAGE_SIZE)
+    Math.ceil(filteredComplaints.length / PAGE_SIZE)
   );
 
-  const visibleCustomers = filteredCustomers.slice(
+  const visibleComplaints = filteredComplaints.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE
   );
 
-  const handleSearch = (event) => {
-    setSearch(event.target.value);
-    setCurrentPage(1);
-  };
-
-  const handleStatusFilter = (event) => {
-    setStatusFilter(event.target.value);
-    setCurrentPage(1);
-  };
-
-  const handleTypeFilter = (event) => {
-    setTypeFilter(event.target.value);
-    setCurrentPage(1);
-  };
-
-  const exportCustomers = () => {
+  const exportCSV = () => {
     const headings = [
-      "Customer ID",
-      "Name",
+      "Complaint ID",
+      "Subject",
+      "Customer",
       "Email",
-      "Contact Number",
-      "Type",
-      "Preferred Channel",
+      "Shipment",
+      "Category",
+      "Priority",
+      "Assigned To",
       "Status",
-      "Open Cases",
     ];
 
-    const rows = filteredCustomers.map((customer) => [
-      customer.customerId,
-      customer.name,
-      customer.email,
-      customer.contactNo,
-      customer.type,
-      customer.preferredChannel,
-      customer.status,
-      customer.openCases,
+    const rows = filteredComplaints.map((complaint) => [
+      complaint.id,
+      complaint.subject,
+      complaint.customer,
+      complaint.email,
+      complaint.shipment,
+      complaint.category,
+      complaint.priority,
+      complaint.assignedTo,
+      complaint.status,
     ]);
 
     const csvContent = [headings, ...rows]
@@ -190,7 +188,7 @@ export default function CustomerList() {
     const link = document.createElement("a");
 
     link.href = url;
-    link.download = "customers.csv";
+    link.download = "complaints.csv";
     link.click();
 
     URL.revokeObjectURL(url);
@@ -201,62 +199,62 @@ export default function CustomerList() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">
-            Customer Management
+            Complaint Management
           </h1>
 
           <p className="mt-1 text-sm text-slate-500">
-            Manage customer profiles, contact details,
-            communication preferences, and account status.
+            Investigate, assign, prioritize, and resolve customer complaints
+            with full traceability.
           </p>
         </div>
 
         <button
           type="button"
-          onClick={() => navigate("/customers/register")}
           className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 text-sm font-semibold text-white shadow-lg transition hover:bg-slate-800"
         >
-          <span className="text-lg">+</span>
-          Add Customer
+          <span className="text-xl leading-none">+</span>
+          New Complaint
         </button>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          icon="group"
-          label="Total Customers"
-          value="2,486"
-          trend="+8.4%"
-          iconClasses="bg-blue-100 text-blue-700"
-        />
-
-        <StatCard
-          icon="check"
-          label="Active Customers"
-          value="2,214"
-          trend="+5.1%"
-          iconClasses="bg-emerald-100 text-emerald-700"
+          icon="priority_high"
+          label="Open Complaints"
+          value="34"
+          trend="+7.2%"
+          negative
+          iconClasses="bg-rose-100 text-rose-700"
         />
 
         <StatCard
           icon="schedule"
-          label="New This Month"
-          value="128"
-          trend="+12.7%"
+          label="Under Investigation"
+          value="18"
+          trend="+2.8%"
           iconClasses="bg-amber-100 text-amber-700"
         />
 
         <StatCard
-          icon="priority_high"
-          label="Open Complaints"
-          value="34"
-          trend="-3.2%"
+          icon="flag"
+          label="High Priority"
+          value="12"
+          trend="+1.4%"
           negative
-          iconClasses="bg-rose-100 text-rose-700"
+          iconClasses="bg-violet-100 text-violet-700"
+        />
+
+        <StatCard
+          icon="check"
+          label="Resolved This Month"
+          value="89"
+          trend="+16.3%"
+          iconClasses="bg-emerald-100 text-emerald-700"
         />
       </div>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="grid gap-3 border-b border-slate-200 p-4 lg:grid-cols-[1fr_160px_210px_120px]">
+        <div className="grid gap-3 border-b border-slate-200 p-4 lg:grid-cols-[1fr_160px_160px_120px]">
           <div className="relative">
             <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xl text-slate-400">
               search
@@ -265,37 +263,48 @@ export default function CustomerList() {
             <input
               type="text"
               value={search}
-              onChange={handleSearch}
-              placeholder="Search by customer name, email, phone, or ID..."
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setCurrentPage(1);
+              }}
+              placeholder="Search by complaint ID, customer, shipment, or category..."
               className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
             />
           </div>
 
           <select
             value={statusFilter}
-            onChange={handleStatusFilter}
+            onChange={(event) => {
+              setStatusFilter(event.target.value);
+              setCurrentPage(1);
+            }}
             className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none"
           >
             <option value="All">All statuses</option>
-            <option value="Active">Active</option>
-            <option value="Pending">Pending</option>
-            <option value="Archived">Archived</option>
+            <option value="Open">Open</option>
+            <option value="Investigating">Investigating</option>
+            <option value="Resolved">Resolved</option>
+            <option value="Closed">Closed</option>
           </select>
 
           <select
-            value={typeFilter}
-            onChange={handleTypeFilter}
+            value={priorityFilter}
+            onChange={(event) => {
+              setPriorityFilter(event.target.value);
+              setCurrentPage(1);
+            }}
             className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none"
           >
-            <option value="All">All customer types</option>
-            <option value="Enterprise">Enterprise</option>
-            <option value="Business">Business</option>
-            <option value="Individual">Individual</option>
+            <option value="All">All priorities</option>
+            <option value="Urgent">Urgent</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
           </select>
 
           <button
             type="button"
-            onClick={exportCustomers}
+            onClick={exportCSV}
             className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
           >
             Export CSV
@@ -303,17 +312,17 @@ export default function CustomerList() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1050px] border-collapse">
+          <table className="w-full min-w-[1100px] border-collapse">
             <thead className="bg-slate-50">
               <tr>
                 {[
+                  "Complaint",
                   "Customer",
-                  "Customer ID",
-                  "Type",
-                  "Contact Number",
-                  "Preferred Channel",
+                  "Shipment",
+                  "Category",
+                  "Priority",
+                  "Assigned To",
                   "Status",
-                  "Open Cases",
                   "Actions",
                 ].map((heading) => (
                   <th
@@ -327,75 +336,75 @@ export default function CustomerList() {
             </thead>
 
             <tbody>
-              {visibleCustomers.map((customer, index) => (
+              {visibleComplaints.map((complaint, index) => (
                 <tr
-                  key={customer.id || customer.customerId}
+                  key={complaint.id}
                   className="border-b border-slate-200 last:border-0 hover:bg-slate-50"
                 >
                   <td className="px-5 py-4">
+                    <p className="font-bold text-slate-900">
+                      #{complaint.id}
+                    </p>
+
+                    <p className="mt-1 max-w-[130px] text-xs leading-4 text-slate-500">
+                      {complaint.subject}
+                    </p>
+                  </td>
+
+                  <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       <div
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
-                          index % 4 === 0
-                            ? "bg-blue-100 text-blue-700"
-                            : index % 4 === 1
-                              ? "bg-violet-100 text-violet-700"
-                              : index % 4 === 2
-                                ? "bg-orange-100 text-orange-700"
-                                : "bg-emerald-100 text-emerald-700"
-                        }`}
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${avatarClasses(
+                          index
+                        )}`}
                       >
-                        {getInitials(customer.name)}
+                        {complaint.initials}
                       </div>
 
-                      <div className="min-w-0">
+                      <div>
                         <p className="font-semibold text-slate-900">
-                          {customer.name}
+                          {complaint.customer}
                         </p>
 
-                        <p className="truncate text-xs text-slate-500">
-                          {customer.email}
+                        <p className="text-xs text-slate-500">
+                          {complaint.email}
                         </p>
                       </div>
                     </div>
                   </td>
 
                   <td className="px-5 py-4 text-sm text-slate-700">
-                    #{customer.customerId}
+                    #{complaint.shipment}
                   </td>
 
                   <td className="px-5 py-4 text-sm text-slate-700">
-                    {customer.type}
+                    {complaint.category}
+                  </td>
+
+                  <td className="px-5 py-4">
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${priorityClasses(
+                        complaint.priority
+                      )}`}
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                      {complaint.priority}
+                    </span>
                   </td>
 
                   <td className="px-5 py-4 text-sm text-slate-700">
-                    {customer.contactNo}
-                  </td>
-
-                  <td className="px-5 py-4 text-sm text-slate-700">
-                    {customer.preferredChannel}
+                    {complaint.assignedTo}
                   </td>
 
                   <td className="px-5 py-4">
                     <span
                       className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${statusClasses(
-                        customer.status
+                        complaint.status
                       )}`}
                     >
                       <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                      {customer.status}
+                      {complaint.status}
                     </span>
-                  </td>
-
-                  <td className="px-5 py-4 text-sm text-slate-700">
-                    {customer.openCases > 1 ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700">
-                        <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                        {customer.openCases} open
-                      </span>
-                    ) : (
-                      customer.openCases
-                    )}
                   </td>
 
                   <td className="px-5 py-4">
@@ -411,30 +420,26 @@ export default function CustomerList() {
                         type="button"
                         className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                       >
-                        Edit
-                      </button>
-
-                      <button
-                        type="button"
-                        aria-label="More actions"
-                        className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
-                      >
-                        <span className="material-symbols-outlined text-lg">
-                          more_vert
-                        </span>
+                        {complaint.status === "Open"
+                          ? "Assign"
+                          : complaint.status === "Investigating"
+                            ? "Update"
+                            : complaint.status === "Resolved"
+                              ? "Reopen"
+                              : "History"}
                       </button>
                     </div>
                   </td>
                 </tr>
               ))}
 
-              {visibleCustomers.length === 0 && (
+              {visibleComplaints.length === 0 && (
                 <tr>
                   <td
                     colSpan="8"
                     className="px-5 py-12 text-center text-sm text-slate-500"
                   >
-                    No customers found.
+                    No complaints found.
                   </td>
                 </tr>
               )}
@@ -445,15 +450,15 @@ export default function CustomerList() {
         <div className="flex flex-col gap-4 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-slate-500">
             Showing{" "}
-            {filteredCustomers.length === 0
+            {filteredComplaints.length === 0
               ? 0
               : (currentPage - 1) * PAGE_SIZE + 1}
             –
             {Math.min(
               currentPage * PAGE_SIZE,
-              filteredCustomers.length
+              filteredComplaints.length
             )}{" "}
-            of {filteredCustomers.length} customers
+            of {filteredComplaints.length} complaints
           </p>
 
           <div className="flex items-center gap-2">
@@ -502,7 +507,7 @@ export default function CustomerList() {
         </div>
       </section>
 
-      <footer className="flex flex-col gap-3 px-1 pb-2 pt-1 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+      <footer className="flex flex-col gap-3 px-1 pb-2 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
         <p>© 2026 LogiFlow Logistics Systems</p>
 
         <div className="flex gap-5">
@@ -545,9 +550,7 @@ function StatCard({
         </span>
       </div>
 
-      <p className="mt-3 text-sm text-slate-500">
-        {label}
-      </p>
+      <p className="mt-3 text-sm text-slate-500">{label}</p>
 
       <p className="mt-1 text-3xl font-bold text-slate-900">
         {value}
