@@ -1,260 +1,145 @@
 import { useState } from "react";
-import DashboardLayout from "../../components/layout/DashboardLayout";
+import PageFooter from '../../components/layout/PageFooter';
 
-export default function CargoBooking() {
-  const [form, setForm] = useState({
-    senderName: "",
-    senderContact: "",
-    senderAddress: "",
-    consigneeName: "",
-    contactPerson: "",
-    consigneeAddress: "",
-    description: "",
-    weight: "",
-    dimensions: "",
-    shippingMethod: "Express Air",
-    expectedDate: "",
-  });
+export default function TrackCargo() {
+  const [query, setQuery] = useState("LOGI-98402");
+  const [isTracking, setIsTracking] = useState(true);
 
-  const bookingId = "LOGI-" + Math.floor(10000 + Math.random() * 90000);
-
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleSaveDraft = () => {
-    alert("Booking saved as draft.");
-  };
-
-  const handleCreate = () => {
-    alert(`Booking ${bookingId} created successfully.`);
+  const handleTrack = (e) => {
+    e.preventDefault();
+    setIsTracking(true);
   };
 
   return (
-    <DashboardLayout>
-      <div className="min-h-screen bg-gray-50 pb-12">
-
-        {/* ── Page Header ── */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-semibold text-gray-900">
-            Create New Cargo Booking
-          </h1>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleSaveDraft}
-              className="px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors"
-            >
-              Save as Draft
-            </button>
-            <button
-              onClick={handleCreate}
-              className="px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors"
-            >
-              Create Booking
-            </button>
-          </div>
-        </div>
-
-        {/* ── 2 × 2 Card Grid ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-
-          {/* ─ Sender Information ─ */}
-          <div className="bg-white border border-gray-200 rounded-2xl p-6">
-            <h2 className="text-base font-semibold text-gray-900 mb-5">
-              Sender Information
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs text-gray-500 mb-1.5">
-                  Full Name
-                </label>
-                <input
-                  name="senderName"
-                  value={form.senderName}
-                  onChange={handleChange}
-                  placeholder="e.g. Acme Logistics Inc."
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1.5">
-                  Contact Number
-                </label>
-                <input
-                  name="senderContact"
-                  value={form.senderContact}
-                  onChange={handleChange}
-                  placeholder="+1 (555) 000-0000"
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1.5">
-                  Address
-                </label>
-                <textarea
-                  name="senderAddress"
-                  value={form.senderAddress}
-                  onChange={handleChange}
-                  rows={3}
-                  placeholder="Full pickup address"
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* ─ Consignee Information ─ */}
-          <div className="bg-white border border-gray-200 rounded-2xl p-6">
-            <h2 className="text-base font-semibold text-gray-900 mb-5">
-              Consignee Information
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs text-gray-500 mb-1.5">
-                  Consignee Name
-                </label>
-                <input
-                  name="consigneeName"
-                  value={form.consigneeName}
-                  onChange={handleChange}
-                  placeholder="e.g. Apex Manufacturing Solutions"
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1.5">
-                  Contact Person
-                </label>
-                <input
-                  name="contactPerson"
-                  value={form.contactPerson}
-                  onChange={handleChange}
-                  placeholder="e.g. Sarah Chen"
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1.5">
-                  Address
-                </label>
-                <textarea
-                  name="consigneeAddress"
-                  value={form.consigneeAddress}
-                  onChange={handleChange}
-                  rows={3}
-                  placeholder="Full delivery address"
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* ─ Cargo Details ─ */}
-          <div className="bg-white border border-gray-200 rounded-2xl p-6">
-            <h2 className="text-base font-semibold text-gray-900 mb-5">
-              Cargo Details
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs text-gray-500 mb-1.5">
-                  Description
-                </label>
-                <textarea
-                  name="description"
-                  value={form.description}
-                  onChange={handleChange}
-                  rows={3}
-                  placeholder="e.g. Machine parts, model XYZ-7"
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1.5">
-                    Weight (kg)
-                  </label>
-                  <input
-                    name="weight"
-                    value={form.weight}
-                    onChange={handleChange}
-                    placeholder="e.g. 1,240"
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1.5">
-                    Dimensions (L × W × H cm)
-                  </label>
-                  <input
-                    name="dimensions"
-                    value={form.dimensions}
-                    onChange={handleChange}
-                    placeholder="e.g. 120 × 80 × 150"
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ─ Booking Details ─ */}
-          <div className="bg-white border border-gray-200 rounded-2xl p-6">
-            <h2 className="text-base font-semibold text-gray-900 mb-5">
-              Booking Details
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs text-gray-500 mb-1.5">
-                  Booking ID
-                </label>
-                <input
-                  value={bookingId}
-                  readOnly
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-blue-600 font-medium focus:outline-none cursor-default"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1.5">
-                  Shipping Method
-                </label>
-                <select
-                  name="shippingMethod"
-                  value={form.shippingMethod}
-                  onChange={handleChange}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition appearance-none"
-                >
-                  <option>Express Air</option>
-                  <option>Standard Sea Freight</option>
-                  <option>Road Transport</option>
-                  <option>Rail Freight</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1.5">
-                  Expected Date
-                </label>
-                <input
-                  type="date"
-                  name="expectedDate"
-                  value={form.expectedDate}
-                  onChange={handleChange}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                />
-              </div>
-            </div>
-          </div>
-
-        </div>
-
-        {/* ── Footer ── */}
-        <div className="mt-10 pt-4 border-t border-gray-200">
-          <p className="text-xs text-gray-400 text-center">
-            © 2024 LogiFlow Systems Inc.
-          </p>
-        </div>
-
+    <div className="min-h-screen bg-surface pb-12 animate-slide-up">
+      {/* ── Page Header ── */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-[#1a1f36]">
+          Cargo Tracking
+        </h1>
       </div>
-    </DashboardLayout>
+
+      {/* ── Search Card ── */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6 shadow-sm">
+        <form onSubmit={handleTrack}>
+          <label className="block text-sm text-gray-500 mb-2">
+            Enter Tracking Number (e.g., LOGI-98402)
+          </label>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <input
+              type="text"
+              className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="LOGI-98402"
+            />
+            <button
+              type="submit"
+              className="px-8 py-2.5 bg-[#2563eb] text-white text-sm font-medium rounded-lg hover:bg-blue-700 active:bg-blue-800 transition-colors sm:w-auto w-full"
+            >
+              Track
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* ── Tracking Results ── */}
+      {isTracking && (
+        <div className="bg-white border border-gray-200 rounded-xl p-8 shadow-sm">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            
+            {/* Left Column: Status & Timeline */}
+            <div>
+              <p className="text-sm font-semibold text-gray-900 mb-1">Current Shipment Status</p>
+              <h2 className="text-2xl font-bold text-[#2563eb] mb-2">Express Air Shipment (Oct 28)</h2>
+              <p className="text-sm text-gray-500 mb-10">Current Location: New York (JFK)</p>
+
+              <div className="relative pl-4 space-y-8">
+                {/* Vertical Line Background */}
+                <div className="absolute top-2 bottom-2 left-[23.5px] w-[2px] bg-gray-200" />
+                {/* Vertical Line Active */}
+                <div className="absolute top-2 bottom-[calc(100%-130px)] left-[23.5px] w-[2px] bg-[#10b981]" />
+
+                {/* Step 1: Completed */}
+                <div className="relative flex items-start gap-4">
+                  <div className="w-6 h-6 rounded-full bg-[#10b981] flex items-center justify-center flex-shrink-0 z-10 border-[3px] border-white ring-1 ring-[#10b981]">
+                    <span className="material-symbols-outlined text-white text-[14px] font-bold">add</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-900">Shipped from Port Oakland</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Oct 26, 2024 - 10:00 AM</p>
+                  </div>
+                </div>
+
+                {/* Step 2: Completed */}
+                <div className="relative flex items-start gap-4">
+                  <div className="w-6 h-6 rounded-full bg-[#10b981] flex items-center justify-center flex-shrink-0 z-10 border-[3px] border-white ring-1 ring-[#10b981]">
+                    <span className="material-symbols-outlined text-white text-[14px] font-bold">add</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-900">Arrived at Hub 1, Chicago</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Oct 27, 2024 - 06:30 PM</p>
+                  </div>
+                </div>
+
+                {/* Step 3: Current */}
+                <div className="relative flex items-start gap-4">
+                  <div className="w-6 h-6 rounded-full bg-[#f59e0b] flex items-center justify-center flex-shrink-0 z-10 border-[3px] border-white ring-1 ring-[#f59e0b]">
+                    <span className="material-symbols-outlined text-white text-[14px] font-bold">add</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-900">Departed Hub 2, New York (JFK)</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Oct 28, 2024 - 08:00 AM (Est.)</p>
+                  </div>
+                </div>
+
+                {/* Step 4: Pending */}
+                <div className="relative flex items-start gap-4">
+                  <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center flex-shrink-0 z-10 border-2 border-gray-300">
+                  </div>
+                  <div className="pt-0.5">
+                    <p className="text-sm font-medium text-gray-500">Arrived JFK Airport</p>
+                  </div>
+                </div>
+
+                {/* Step 5: Pending */}
+                <div className="relative flex items-start gap-4">
+                  <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center flex-shrink-0 z-10 border-2 border-gray-300">
+                  </div>
+                  <div className="pt-0.5">
+                    <p className="text-sm font-medium text-gray-500">Out for Delivery</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Cargo Details */}
+            <div>
+              <div className="border border-gray-200 rounded-xl p-6 min-h-[400px]">
+                <h3 className="text-sm font-bold text-gray-900 mb-6">Cargo Details</h3>
+                
+                <div className="space-y-6">
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Sender</p>
+                    <p className="text-sm font-bold text-gray-900">Acme Logistics Inc.</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Consignee</p>
+                    <p className="text-sm font-bold text-gray-900">Apex Manufacturing Solutions</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Destination</p>
+                    <p className="text-sm font-bold text-gray-900">San Francisco, CA</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      <PageFooter />
+    </div>
   );
 }
