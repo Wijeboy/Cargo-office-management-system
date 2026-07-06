@@ -1,300 +1,60 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "./context/AuthContext";
+import React, { useState } from "react";
+import Sidebar from "./pages/finance/Sidebar";
+import Topbar from "./pages/finance/Topbar";
+import Footer from "./pages/finance/Footer";
+import FinanceDashboard from "./pages/finance/FinanceDashboard";
+import InvoiceManagement from "./pages/finance/InvoiceManagement";
+import GenerateInvoice from "./pages/finance/GenerateInvoice";
+import PaymentManagement from "./pages/finance/PaymentManagement";
+import ExpenseManagement from "./pages/finance/ExpenseManagement";
+import AddExpense from "./pages/finance/AddExpense";
+import FinancialReports from "./pages/finance/FinancialReports";
 
-// Auth pages
-import Login from "./pages/auth/Login";
-import SignUp from "./pages/auth/SignUp";
-import ForgotPassword from "./pages/auth/ForgotPassword";
-import ResetPassword from "./pages/auth/ResetPassword";
-
-// Layouts
-import DashboardLayout from "./components/layout/DashboardLayout";
-import CustomerServiceLayout from "./components/layout/CustomerServiceLayout";
-import CustomerPortalLayout from "./components/layout/CustomerPortalLayout";
-
-// App pages
-import AdminDashboard from "./pages/dashboard/AdminDashboard";
-import TrackCargo from "./pages/cargo/TrackCargo";
-import CargoList from "./pages/cargo/CargoList";
-
-import CustomerList from "./pages/customers/CustomerList";
-import CustomerRegistration from "./pages/customers/CustomerRegistration";
-import InquiryManagement from "./pages/customers/InquiryManagement";
-import ComplaintManagement from "./pages/customers/ComplaintManagement";
-import FeedbackManagement from "./pages/customers/FeedbackManagement";
-import NotificationManagement from "./pages/customers/NotificationManagement";
-import CustomerPortalDashboard from "./pages/customers/CustomerPortalDashboard";
-
-import InvoiceList from "./pages/finance/InvoiceList";
-import AddInvoice from "./pages/finance/AddInvoice";
-import PrintReceipt from "./pages/finance/PrintReceipt";
-
-import WarehouseList from "./pages/warehouse/WarehouseList";
-import UserList from "./pages/users/UserList";
-import MyProfile from "./pages/profile/MyProfile";
-import NotFound from "./pages/NotFound";
-import PublicTrackCargo from "./pages/public/PublicTrackCargo";
-
-// Protected route using the Admin layout
-function ProtectedRoute({ children }) {
-  const { isAuthenticated } = useAuth();
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return <DashboardLayout>{children}</DashboardLayout>;
-}
-
-// Protected route using the Customer Service layout
-function CustomerServiceProtectedRoute({ children }) {
-  const { isAuthenticated } = useAuth();
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return (
-    <CustomerServiceLayout>
-      {children}
-    </CustomerServiceLayout>
-  );
-}
-
-// Protected route using the Customer Portal layout
-function CustomerPortalProtectedRoute({ children }) {
-  const { isAuthenticated } = useAuth();
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return (
-    <CustomerPortalLayout>
-      {children}
-    </CustomerPortalLayout>
-  );
-}
-
-// Public route
-function PublicRoute({ children }) {
-  const { isAuthenticated } = useAuth();
-
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  return children;
-}
-
-// App routes
-function AppRoutes() {
-  return (
-    <Routes>
-      {/* Fully public routes */}
-      <Route path="/track-parcel" element={<PublicTrackCargo />} />
-      <Route path="/not-found" element={<NotFound />} />
-
-      {/* Public authentication routes */}
-      <Route
-        path="/login"
-        element={
-          <PublicRoute>
-            <Login />
-          </PublicRoute>
-        }
-      />
-
-      <Route
-        path="/signup"
-        element={
-          <PublicRoute>
-            <SignUp />
-          </PublicRoute>
-        }
-      />
-
-      <Route
-        path="/forgot-password"
-        element={
-          <PublicRoute>
-            <ForgotPassword />
-          </PublicRoute>
-        }
-      />
-
-      <Route
-        path="/reset-password"
-        element={
-          <PublicRoute>
-            <ResetPassword />
-          </PublicRoute>
-        }
-      />
-
-      {/* Admin routes */}
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <AdminDashboard />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/cargo"
-        element={
-          <ProtectedRoute>
-            <CargoList />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/track"
-        element={
-          <ProtectedRoute>
-            <TrackCargo />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/invoices"
-        element={
-          <ProtectedRoute>
-            <InvoiceList />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/invoices/new"
-        element={
-          <ProtectedRoute>
-            <AddInvoice />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/invoices/print"
-        element={
-          <ProtectedRoute>
-            <PrintReceipt />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/warehouse"
-        element={
-          <ProtectedRoute>
-            <WarehouseList />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/users"
-        element={
-          <ProtectedRoute>
-            <UserList />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/profile"
-        element={
-          <ProtectedRoute>
-            <MyProfile />
-          </ProtectedRoute>
-        }
-      />
-
-      {/* Customer Service routes */}
-      <Route
-        path="/customers"
-        element={
-          <CustomerServiceProtectedRoute>
-            <CustomerList />
-          </CustomerServiceProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/customers/register"
-        element={
-          <CustomerServiceProtectedRoute>
-            <CustomerRegistration />
-          </CustomerServiceProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/customer-service/inquiries"
-        element={
-          <CustomerServiceProtectedRoute>
-            <InquiryManagement />
-          </CustomerServiceProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/customer-service/complaints"
-        element={
-          <CustomerServiceProtectedRoute>
-            <ComplaintManagement />
-          </CustomerServiceProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/customer-service/feedback"
-        element={
-          <CustomerServiceProtectedRoute>
-            <FeedbackManagement />
-          </CustomerServiceProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/customer-service/notifications"
-        element={
-          <CustomerServiceProtectedRoute>
-            <NotificationManagement />
-          </CustomerServiceProtectedRoute>
-        }
-      />
-
-      {/* Customer Portal route */}
-      <Route
-        path="/customer-portal/dashboard"
-        element={
-          <CustomerPortalProtectedRoute>
-            <CustomerPortalDashboard />
-          </CustomerPortalProtectedRoute>
-        }
-      />
-
-      {/* Root redirect */}
-      <Route path="/" element={<Navigate to="/track-parcel" replace />} />
-
-      {/* Catch-all 404 */}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-  );
-}
-
-// Root app
+/**
+ * Simple state-based "router". Swap this for react-router-dom if the
+ * rest of your app already uses it — just replace `page`/`setPage`
+ * with useNavigate()/useParams() and turn each case below into a <Route>.
+ *
+ * Page keys:
+ *  dashboard     -> Finance Dashboard
+ *  invoices      -> Invoice Management
+ *  invoice-form  -> Generate Invoice
+ *  payments      -> Payment Management
+ *  expenses      -> Expense Management (Financial Reports-style expense view)
+ *  add-expense   -> Add Expense form
+ *  reports       -> Financial Reports
+ */
 export default function App() {
+  const [page, setPage] = useState("dashboard");
+
+  const renderPage = () => {
+    switch (page) {
+      case "invoices":
+        return <InvoiceManagement onNavigate={setPage} />;
+      case "invoice-form":
+        return <GenerateInvoice onNavigate={setPage} />;
+      case "payments":
+        return <PaymentManagement onNavigate={setPage} />;
+      case "expenses":
+        return <ExpenseManagement onNavigate={setPage} />;
+      case "add-expense":
+        return <AddExpense onNavigate={setPage} />;
+      case "reports":
+        return <FinancialReports onNavigate={setPage} />;
+      case "dashboard":
+      default:
+        return <FinanceDashboard onNavigate={setPage} />;
+    }
+  };
+
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
-    </BrowserRouter>
+    <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans">
+      <Sidebar activePage={page} onNavigate={setPage} />
+      <div className="flex-1 min-w-0 flex flex-col min-h-screen">
+        <Topbar />
+        <div className="flex-1">{renderPage()}</div>
+        <Footer />
+      </div>
+    </div>
   );
 }
