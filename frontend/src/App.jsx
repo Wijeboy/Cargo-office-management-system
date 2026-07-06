@@ -12,7 +12,7 @@ import DashboardLayout from './components/layout/DashboardLayout';
 
 // App pages
 import AdminDashboard from './pages/dashboard/AdminDashboard';
-import TrackCargo from './pages/cargo/TrackCargo';
+import TrackCargo from './pages/cargo/cargotracking';
 import CargoList from './pages/cargo/CargoList';
 import CustomerList from './pages/customers/CustomerList';
 import InvoiceList from './pages/finance/InvoiceList';
@@ -21,10 +21,10 @@ import UserList from './pages/users/UserList';
 import MyProfile from './pages/profile/MyProfile';
 import NotFound from './pages/NotFound';
 import CreateBooking from './pages/cargo/CreateBooking';
-import ShipmentScheduling from './pages/scheduling/ShipmentScheduling';
-import RouteManagement from './pages/routes/RouteManagement';
-import OperationsReports from './pages/reports/OperationsReports';
-import ShipmentHistory from './pages/history/ShipmentHistory';
+import ShipmentScheduling from './pages/cargo/ShipmentScheduling';
+import RouteManagement from './pages/cargo/RouteManagement';
+import OperationsReports from './pages/cargo/OperationsReports';
+import ShipmentHistory from './pages/cargo/ShipmentHistory';
 import PublicTrackCargo from './pages/public/PublicTrackCargo';
 
 // ─── Protected Route wrapper ──────────────────────────────

@@ -21,8 +21,8 @@ export default function CargoList() {
     .filter(s =>
       (statusFilter === 'ALL' || s.status === statusFilter) &&
       (s.shipmentCode.toLowerCase().includes(search.toLowerCase()) ||
-       s.customerName.toLowerCase().includes(search.toLowerCase()) ||
-       s.destination.toLowerCase().includes(search.toLowerCase()))
+        s.customerName.toLowerCase().includes(search.toLowerCase()) ||
+        s.destination.toLowerCase().includes(search.toLowerCase()))
     )
     .sort((a, b) => {
       if (sortBy === 'createdAt') return new Date(b.createdAt) - new Date(a.createdAt);
