@@ -1,44 +1,86 @@
-import { createContext, useContext, useState, useCallback } from 'react';
-import { MOCK_CREDENTIALS, MOCK_USERS } from '../data/mockData';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 
 const AuthContext = createContext(null);
+const API_URL = 'http://localhost:5001';
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    try {
-      const stored = localStorage.getItem('lf_user');
-      return stored ? JSON.parse(stored) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Check auth state on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = localStorage.getItem('lf_token');
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_URL}/api/auth/me`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data.user);
+          localStorage.setItem('lf_user', JSON.stringify(data.user));
+        } else {
+          // Token expired or invalid
+          localStorage.removeItem('lf_user');
+          localStorage.removeItem('lf_token');
+          setUser(null);
+        }
+      } catch (err) {
+        console.error('Error checking auth:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
 
   const login = useCallback(async (email, password) => {
-    // Simulate API delay
-    await new Promise(r => setTimeout(r, 1200));
+    const response = await fetch(`${API_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    });
 
-    const cred = MOCK_CREDENTIALS[email];
-    if (!cred || cred.password !== password) {
-      throw new Error('Invalid email or password. Please try again.');
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Invalid email or password. Please try again.');
     }
 
-    const userData = MOCK_USERS.find(u => u.id === cred.userId);
-    if (!userData || !userData.status) {
-      throw new Error('Your account has been deactivated. Contact administrator.');
-    }
-
-    const sessionUser = { ...userData };
-    setUser(sessionUser);
-    localStorage.setItem('lf_user', JSON.stringify(sessionUser));
-    localStorage.setItem('lf_token', `mock-jwt-token-${userData.id}-${Date.now()}`);
-    return sessionUser;
+    setUser(data.user);
+    localStorage.setItem('lf_user', JSON.stringify(data.user));
+    localStorage.setItem('lf_token', data.token);
+    return data.user;
   }, []);
 
   const register = useCallback(async (formData) => {
-    await new Promise(r => setTimeout(r, 1500));
-    // In mock mode, just simulate success
-    // Real: POST /api/auth/register
-    return { success: true, message: 'Account created successfully! Please login.' };
+    const response = await fetch(`${API_URL}/api/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(formData),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Registration failed. Please try again.');
+    }
+
+    return { success: true, message: data.message };
   }, []);
 
   const logout = useCallback(() => {
@@ -56,7 +98,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, register, updateProfile, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, register, updateProfile, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );
