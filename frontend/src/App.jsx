@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { Toaster } from "react-hot-toast";
+
 
 // Auth pages
 import Login from "./pages/auth/Login";
@@ -43,6 +45,8 @@ import PaymentManagement from "./pages/finance/PaymentManagement";
 import ExpenseManagement from "./pages/finance/ExpenseManagement";
 import AddExpense from "./pages/finance/AddExpense";
 import FinancialReports from "./pages/finance/FinancialReports";
+import PrintReceipt from "./pages/finance/PrintReceipt";
+
 
 // Other pages
 import WarehouseList from "./pages/warehouse/WarehouseList";
@@ -108,30 +112,40 @@ function RootRedirect() {
 
 function FinancePortal() {
   const [page, setPage] = useState("dashboard");
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
+
+  const navigateTo = (nextPage, invoiceData = null) => {
+    if (invoiceData) {
+      setSelectedInvoice(invoiceData);
+    }
+    setPage(nextPage);
+  };
 
   const renderPage = () => {
     switch (page) {
       case "invoices":
-        return <InvoiceManagement onNavigate={setPage} />;
+        return <InvoiceManagement onNavigate={navigateTo} />;
       case "invoice-form":
-        return <GenerateInvoice onNavigate={setPage} />;
+        return <GenerateInvoice onNavigate={navigateTo} />;
+      case "print-receipt":
+        return <PrintReceipt invoice={selectedInvoice} onNavigate={navigateTo} />;
       case "payments":
-        return <PaymentManagement onNavigate={setPage} />;
+        return <PaymentManagement onNavigate={navigateTo} />;
       case "expenses":
-        return <ExpenseManagement onNavigate={setPage} />;
+        return <ExpenseManagement onNavigate={navigateTo} />;
       case "add-expense":
-        return <AddExpense onNavigate={setPage} />;
+        return <AddExpense onNavigate={navigateTo} />;
       case "reports":
-        return <FinancialReports onNavigate={setPage} />;
+        return <FinancialReports onNavigate={navigateTo} />;
       case "dashboard":
       default:
-        return <FinanceDashboard onNavigate={setPage} />;
+        return <FinanceDashboard onNavigate={navigateTo} />;
     }
   };
 
   return (
     <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans w-full">
-      <Sidebar activePage={page} onNavigate={setPage} />
+      <Sidebar activePage={page} onNavigate={navigateTo} />
       <div className="flex-1 min-w-0 flex flex-col min-h-screen">
         <Topbar />
         <div className="flex-1">{renderPage()}</div>
@@ -252,6 +266,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <AppRoutes />
+        <Toaster position="top-right" />
       </AuthProvider>
     </BrowserRouter>
   );
