@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { ArrowLeft, Plus, Trash2, Send, Save } from "lucide-react";
+import { toast } from "react-hot-toast";
+
 
 const emptyLine = () => ({
   id: crypto.randomUUID ? crypto.randomUUID() : String(Math.random()),
@@ -39,9 +41,10 @@ export default function GenerateInvoice({ onNavigate }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Hook up to your API here
-    alert(`Invoice ${invoiceNumber} for "${client || "unnamed client"}" created — total ${currency(total)}`);
-    onNavigate("invoices");
+    // Show premium toast notification
+    toast.success(`Invoice ${invoiceNumber} for ${client || "Client"} generated successfully!`);
+    // Navigate directly to print-receipt subpage
+    onNavigate("print-receipt", invoiceNumber);
   };
 
   return (
