@@ -1,4 +1,6 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import {
   LayoutGrid,
   FileText,
@@ -15,6 +17,14 @@ const navItems = [
 ];
 
 export default function Sidebar({ activePage, onNavigate }) {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   return (
     <aside className="hidden md:flex md:flex-col w-60 shrink-0 border-r border-gray-200 bg-white h-screen sticky top-0">
       {/* Brand */}
@@ -56,7 +66,7 @@ export default function Sidebar({ activePage, onNavigate }) {
           <LifeBuoy className="w-4 h-4" />
           Support
         </button>
-        <button className="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
+        <button onClick={handleLogout} className="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
           <LogOut className="w-4 h-4" />
           Logout
         </button>

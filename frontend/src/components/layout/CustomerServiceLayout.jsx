@@ -1,4 +1,5 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 const navigationItems = [
   {
@@ -35,6 +36,15 @@ const navigationItems = [
 
 function CustomerServiceLayout({ children }) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
+  const initials = user?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'CS';
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -88,8 +98,8 @@ function CustomerServiceLayout({ children }) {
               </span>
             </button>
 
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 text-sm font-bold text-white">
-              AR
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 text-sm font-bold text-white uppercase" title={`${user?.name || ''} (${user?.role || ''})`}>
+              {initials}
             </div>
           </div>
         </div>
@@ -145,6 +155,7 @@ function CustomerServiceLayout({ children }) {
 
           <button
             type="button"
+            onClick={handleLogout}
             className="flex h-12 w-full items-center gap-3 rounded-xl px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
           >
             <span className="material-symbols-outlined text-[21px]">

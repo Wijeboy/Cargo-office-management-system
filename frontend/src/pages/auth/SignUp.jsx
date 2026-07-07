@@ -17,7 +17,7 @@ export default function SignUp() {
     name: '',
     email: '',
     company: '',
-    role: 'OPERATIONS',
+    role: 'CUSTOMER',
     password: '',
     confirmPassword: '',
   });
@@ -154,17 +154,7 @@ export default function SignUp() {
                 </div>
               </div>
 
-              {/* Role */}
-              <div>
-                <label className="input-label" htmlFor="role">Department / Role</label>
-                <div className="relative">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-xl pointer-events-none">badge</span>
-                  <select id="role" className="input-with-icon appearance-none" value={form.role} onChange={set('role')}>
-                    {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                  </select>
-                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-xl pointer-events-none">expand_more</span>
-                </div>
-              </div>
+
 
               {/* Password */}
               <div>

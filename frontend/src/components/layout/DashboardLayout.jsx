@@ -3,16 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { MOCK_NOTIFICATIONS } from '../../data/mockData';
 
-const NAV_ITEMS = [
-  { to: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
-  { to: '/cargo', icon: 'table_rows', label: 'Cargo Booking' },
-  { to: '/cargo/new', icon: 'add_circle', label: 'Create Booking' },
-  { to: '/scheduling', icon: 'calendar_month', label: 'Shipment Scheduling' },
-  { to: '/track', icon: 'my_location', label: 'Cargo Tracking' },
-  { to: '/routes', icon: 'route', label: 'Route Management' },
-  { to: '/reports', icon: 'pie_chart', label: 'Operations Reports' },
-  { to: '/history', icon: 'history', label: 'Shipment History' },
-];
+
 
 export default function DashboardLayout({ children }) {
   const { user, logout } = useAuth();
@@ -23,6 +14,38 @@ export default function DashboardLayout({ children }) {
   const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
   const [search, setSearch] = useState('');
   const notifRef = useRef(null);
+
+  const getNavItems = () => {
+    const items = [
+      { to: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
+      { to: '/cargo', icon: 'table_rows', label: 'Cargo Booking' },
+      { to: '/cargo/new', icon: 'add_circle', label: 'Create Booking' },
+      { to: '/scheduling', icon: 'calendar_month', label: 'Shipment Scheduling' },
+      { to: '/track', icon: 'my_location', label: 'Cargo Tracking' },
+      { to: '/routes', icon: 'route', label: 'Route Management' },
+      { to: '/reports', icon: 'pie_chart', label: 'Operations Reports' },
+      { to: '/history', icon: 'history', label: 'Shipment History' },
+    ];
+
+    if (user?.role === 'ADMIN') {
+      return [
+        ...items,
+        { to: '/warehouse', icon: 'warehouse', label: 'Warehouse Log' },
+        { to: '/users', icon: 'manage_accounts', label: 'User Management' },
+      ];
+    }
+
+    if (user?.role === 'WAREHOUSE') {
+      return [
+        { to: '/warehouse', icon: 'warehouse', label: 'Warehouse Log' },
+        { to: '/track', icon: 'my_location', label: 'Cargo Tracking' },
+      ];
+    }
+
+    return items;
+  };
+
+  const navItems = getNavItems();
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
@@ -99,7 +122,7 @@ export default function DashboardLayout({ children }) {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
-          {NAV_ITEMS.map(item => {
+          {navItems.map(item => {
             const active = location.pathname === item.to ||
               (item.to === '/cargo' && location.pathname === '/cargo') ||
               (item.to !== '/dashboard' && item.to !== '/cargo' && location.pathname.startsWith(item.to));

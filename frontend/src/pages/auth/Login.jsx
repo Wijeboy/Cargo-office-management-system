@@ -16,8 +16,16 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      await login(form.email, form.password);
-      navigate('/dashboard');
+      const user = await login(form.email, form.password);
+      if (user.role === 'FINANCE') {
+        navigate('/finance');
+      } else if (user.role === 'CUSTOMER_SERVICE') {
+        navigate('/customer-portal/dashboard');
+      } else if (user.role === 'WAREHOUSE') {
+        navigate('/warehouse');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err.message);
     } finally {
