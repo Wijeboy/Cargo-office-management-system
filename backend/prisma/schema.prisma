@@ -19,9 +19,16 @@ model User {
   department   String?
   phone        String?
   avatar       String?
-  status       Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  timezone     String?
+  bio          String?
+  location     String?
+  twoFA            Boolean  @default(false)
+  prefSystemAlerts Boolean  @default(true)
+  prefWeeklyReport Boolean  @default(true)
+  prefBetaFeatures Boolean  @default(false)
+  status           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 model Customer {

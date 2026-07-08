@@ -247,8 +247,12 @@ export default function DashboardLayout({ children }) {
 
             {/* User avatar */}
             <Link to="/profile" className="flex items-center gap-2.5 pl-2 border-l border-outline-variant ml-1">
-              <div className="w-9 h-9 rounded-full bg-primary-container ring-2 ring-primary-fixed flex items-center justify-center text-sm font-bold text-on-primary-container cursor-pointer hover:ring-accent transition-all">
-                {initials}
+              <div className="w-9 h-9 rounded-full overflow-hidden bg-primary-container ring-2 ring-primary-fixed flex items-center justify-center text-sm font-bold text-on-primary-container cursor-pointer hover:ring-accent transition-all">
+                {user?.avatar ? (
+                  <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  initials
+                )}
               </div>
               <div className="hidden md:block">
                 <p className="text-sm font-semibold text-on-surface leading-none">{user?.name}</p>

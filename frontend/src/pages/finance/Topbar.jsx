@@ -1,7 +1,12 @@
 import React from "react";
 import { Search, Bell, Settings } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+import { Link } from "react-router-dom";
 
 export default function Topbar() {
+  const { user } = useAuth();
+  const initials = user?.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'FI';
+
   return (
     <header className="h-16 flex items-center justify-between px-6 border-b border-gray-200 bg-white sticky top-0 z-10">
       <div className="relative w-80 max-w-full">
@@ -26,11 +31,20 @@ export default function Topbar() {
         >
           <Settings className="w-4 h-4" />
         </button>
-        <img
-          src="/public/avatar.png"
-          alt="User avatar"
-          className="w-9 h-9 rounded-full object-cover"
-        />
+        
+        <Link to="/profile" className="flex items-center gap-2 hover:opacity-85 transition-opacity">
+          {user?.avatar ? (
+            <img
+              src={user.avatar}
+              alt="User avatar"
+              className="w-9 h-9 rounded-full object-cover"
+            />
+          ) : (
+            <div className="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-bold text-white uppercase">
+              {initials}
+            </div>
+          )}
+        </Link>
       </div>
     </header>
   );
