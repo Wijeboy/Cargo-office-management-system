@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { hashPassword, comparePassword, generateToken } from '../utils/auth.js';
 
 const prisma = new PrismaClient();
+const otpStore = new Map(); // Key: email, Value: { code, expiresAt }
 
 /**
  * Handle user registration (SignUp).
@@ -365,4 +366,178 @@ export async function verify2FA(req, res) {
     });
   }
 }
+
+/**
+ * Request forgot password OTP.
+ */
+export async function requestForgotPassword(req, res) {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({
+      status: 400,
+      error: 'Bad Request',
+      message: 'Email address is required.',
+    });
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        status: 404,
+        error: 'Not Found',
+        message: 'No account found with this email address.',
+      });
+    }
+
+    if (!user.status) {
+      return res.status(403).json({
+        status: 403,
+        error: 'Forbidden',
+        message: 'Your account is deactivated.',
+      });
+    }
+
+    // Generate a random 6-digit OTP
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes
+
+    otpStore.set(email.toLowerCase(), { code, expiresAt });
+
+    console.log(`[PASSWORD RESET OTP for ${email}]: ${code}`);
+
+    return res.json({
+      status: 'success',
+      message: 'Verification code sent successfully. Enter demo code to reset password.',
+      demoCode: code, // returned for easier frontend manual evaluation
+    });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    return res.status(500).json({
+      status: 500,
+      error: 'Internal Server Error',
+      message: 'Failed to request password reset.',
+      details: error.message,
+    });
+  }
+}
+
+/**
+ * Verify password reset OTP code.
+ */
+export async function verifyResetCode(req, res) {
+  const { email, code } = req.body;
+
+  if (!email || !code) {
+    return res.status(400).json({
+      status: 400,
+      error: 'Bad Request',
+      message: 'Email address and verification code are required.',
+    });
+  }
+
+  const record = otpStore.get(email.toLowerCase());
+
+  if (!record) {
+    return res.status(400).json({
+      status: 400,
+      error: 'Bad Request',
+      message: 'No active recovery request found. Try requesting again.',
+    });
+  }
+
+  if (Date.now() > record.expiresAt) {
+    otpStore.delete(email.toLowerCase());
+    return res.status(400).json({
+      status: 400,
+      error: 'Bad Request',
+      message: 'Verification code has expired. Please request a new one.',
+    });
+  }
+
+  if (record.code !== code) {
+    return res.status(400).json({
+      status: 400,
+      error: 'Bad Request',
+      message: 'Invalid verification code.',
+    });
+  }
+
+  return res.json({
+    status: 'success',
+    message: 'Verification code is valid.',
+  });
+}
+
+/**
+ * Reset password using valid OTP code.
+ */
+export async function resetPassword(req, res) {
+  const { email, code, newPassword } = req.body;
+
+  if (!email || !code || !newPassword) {
+    return res.status(400).json({
+      status: 400,
+      error: 'Bad Request',
+      message: 'Email, code, and new password are required fields.',
+    });
+  }
+
+  const record = otpStore.get(email.toLowerCase());
+
+  if (!record) {
+    return res.status(400).json({
+      status: 400,
+      error: 'Bad Request',
+      message: 'Recovery session not found.',
+    });
+  }
+
+  if (Date.now() > record.expiresAt) {
+    otpStore.delete(email.toLowerCase());
+    return res.status(400).json({
+      status: 400,
+      error: 'Bad Request',
+      message: 'Recovery session has expired.',
+    });
+  }
+
+  if (record.code !== code) {
+    return res.status(400).json({
+      status: 400,
+      error: 'Bad Request',
+      message: 'Invalid code.',
+    });
+  }
+
+  try {
+    const hashedPassword = await hashPassword(newPassword);
+
+    await prisma.user.update({
+      where: { email: email.toLowerCase() },
+      data: { passwordHash: hashedPassword },
+    });
+
+    // Clear session
+    otpStore.delete(email.toLowerCase());
+
+    return res.json({
+      status: 'success',
+      message: 'Password reset successfully. You can now log in.',
+    });
+  } catch (error) {
+    console.error('Password reset update error:', error);
+    return res.status(500).json({
+      status: 500,
+      error: 'Internal Server Error',
+      message: 'Failed to reset password.',
+      details: error.message,
+    });
+  }
+}
+
 
