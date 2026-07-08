@@ -1,19 +1,83 @@
-import React from 'react'
-import { mockReceiptItems } from '../../data/mockData';
+import React from 'react';
 
 const InvoiceCard = ({ invoice }) => {
-  const clientName = invoice?.clientName || 'Apex Manufacturing';
-  const status = invoice?.status || 'Paid';
-  const issueDate = invoice?.issueDate
-    ? new Date(invoice.issueDate).toLocaleDateString()
+  // Extract and format customer info from database or fallback to mock
+  const clientName = invoice?.customer?.name || invoice?.clientName || invoice?.client || 'Apex Manufacturing';
+  const customerEmail = invoice?.customer?.email || 'contact@apexmf.com';
+  const customerPhone = invoice?.customer?.contactNo || '';
+  const customerAddress = invoice?.customer?.address || '451 Industrial Parkway, Detroit, MI 48201';
+  const customerCompany = invoice?.customer?.company || 'Apex Manufacturing Ltd.';
+
+  // Map status from Prisma (e.g., 'PAID', 'PENDING', 'OVERDUE') or fallback
+  const rawStatus = invoice?.paymentStatus || invoice?.status || 'PAID';
+  // Capitalize nicely
+  const status = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase();
+
+  // Format dates
+  const issueDate = invoice?.date || invoice?.issueDate
+    ? new Date(invoice.date || invoice.issueDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
     : 'Oct 24, 2023';
-  const dueDate = invoice?.dueDate
-    ? new Date(invoice.dueDate).toLocaleDateString()
-    : 'Nov 24, 2023';
-  const subtotal = invoice?.subtotal ?? 18400;
-  const tax = invoice?.tax ?? 1363;
-  const total = invoice?.total ?? subtotal + tax;
+
+  const getDueDate = () => {
+    if (invoice?.dueDate) {
+      return new Date(invoice.dueDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+    // Default to issueDate + 30 days if no due date specified
+    const baseDate = invoice?.date || invoice?.issueDate;
+    if (baseDate) {
+      const d = new Date(baseDate);
+      d.setDate(d.getDate() + 30);
+      return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+    return 'Nov 24, 2023';
+  };
+  const dueDate = getDueDate();
+
+  // Calculate subtotals
+  const tax = invoice?.tax ?? 0;
+  const total = invoice?.totalAmount ?? invoice?.total ?? 0;
+  const subtotal = total - tax;
   const invoiceNo = invoice?.invoiceNo || 'INV-1043';
+
+  // Get line items from database invoice notes or fallback
+  let receiptItems = [];
+  if (invoice?.notes) {
+    try {
+      const parsed = JSON.parse(invoice.notes);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        receiptItems = parsed;
+      }
+    } catch (e) {
+      // notes is plain text, not JSON
+    }
+  }
+
+  // If no items extracted, generate a default one based on the shipment details
+  if (receiptItems.length === 0) {
+    const shipmentCode = invoice?.shipment?.shipmentCode || 'LOG-XXXX';
+    const origin = invoice?.shipment?.origin || 'Origin';
+    const destination = invoice?.shipment?.destination || 'Destination';
+    const weight = invoice?.shipment?.weight || 0;
+    const description = invoice?.shipment?.description || 'Cargo freight transport';
+
+    receiptItems = [
+      {
+        title: `Freight Shipment Delivery (${shipmentCode})`,
+        details: `${description} | Route: ${origin} → ${destination} | Weight: ${weight} kg`,
+        quantity: 1,
+        rate: subtotal,
+        amount: subtotal
+      }
+    ];
+  }
+
+  // Choose badge color based on status
+  const badgeStyles = {
+    Paid: "bg-emerald-100 text-emerald-700",
+    Pending: "bg-amber-100 text-amber-700",
+    Overdue: "bg-rose-100 text-rose-700",
+  };
+  const currentBadgeStyle = badgeStyles[status] || "bg-gray-100 text-gray-700";
 
   return (
     <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm flex flex-col h-full">
@@ -29,7 +93,7 @@ const InvoiceCard = ({ invoice }) => {
           <p className="text-xs text-gray-400 font-medium tracking-wide">
             RECEIPT
           </p>
-            <p className="text-sm font-semibold text-gray-200">#{invoiceNo}</p>
+          <p className="text-sm font-semibold text-gray-200">#{invoiceNo}</p>
         </div>
       </div>
 
@@ -40,19 +104,19 @@ const InvoiceCard = ({ invoice }) => {
             Client Billing
           </h3>
           <p className="font-bold text-gray-900">{clientName}</p>
-          <p className="text-gray-500 text-xs mt-1">
-            451 Industrial Parkway
-            <br />
-            Detroit, MI 48201
+          {customerCompany && <p className="text-gray-700 text-xs mt-0.5">{customerCompany}</p>}
+          <p className="text-gray-500 text-xs mt-1 whitespace-pre-line">
+            {customerAddress}
           </p>
-          <p className="text-gray-500 text-xs mt-1">contact@apexmf.com</p>
+          <p className="text-gray-500 text-xs mt-1">{customerEmail}</p>
+          {customerPhone && <p className="text-gray-500 text-xs mt-0.5">{customerPhone}</p>}
         </div>
         <div className="text-right">
           <h3 className="text-xs font-bold text-gray-400 tracking-wider uppercase mb-2">
             Transaction Info
           </h3>
           <div className="mb-2">
-            <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+            <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${currentBadgeStyle}`}>
               {status}
             </span>{" "}
             <span className="text-gray-500 text-xs ml-1">Status</span>
@@ -65,6 +129,12 @@ const InvoiceCard = ({ invoice }) => {
             <span className="text-gray-400">Due Date:</span>{" "}
             <span className="font-semibold text-gray-700">{dueDate}</span>
           </p>
+          {invoice?.paymentMethod && (
+            <p className="text-xs text-gray-500 mt-0.5">
+              <span className="text-gray-400">Payment:</span>{" "}
+              <span className="font-semibold text-gray-700">{invoice.paymentMethod}</span>
+            </p>
+          )}
         </div>
       </div>
 
@@ -78,26 +148,28 @@ const InvoiceCard = ({ invoice }) => {
 
       {/* Table Rows */}
       <div className="divide-y divide-gray-100 px-6 flex-grow">
-        {mockReceiptItems.map((item, idx) => (
+        {receiptItems.map((item, idx) => (
           <div
             key={idx}
             className="grid grid-cols-12 gap-2 py-5 text-sm items-start"
           >
             <div className="col-span-6">
-              <p className="font-semibold text-gray-900">{item.title}</p>
-              <p className="text-xs text-gray-400 mt-1 max-w-sm">
-                {item.details}
-              </p>
+              <p className="font-semibold text-gray-900">{item.title || item.description}</p>
+              {item.details && (
+                <p className="text-xs text-gray-400 mt-1 max-w-sm">
+                  {item.details}
+                </p>
+              )}
             </div>
             <div className="col-span-2 text-center font-medium text-gray-700 self-center">
-              {item.quantity}
+              {item.quantity || item.qty || 1}
             </div>
             <div className="col-span-2 text-right font-medium text-gray-600 self-center">
-              ${item.rate.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+              ${(item.rate || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
             </div>
             <div className="col-span-2 text-right font-bold text-gray-900 self-center">
               $
-              {item.amount.toLocaleString("en-US", {
+              {(item.amount || (item.quantity * item.rate) || 0).toLocaleString("en-US", {
                 minimumFractionDigits: 2,
               })}
             </div>
@@ -111,9 +183,13 @@ const InvoiceCard = ({ invoice }) => {
           <h4 className="text-xs font-bold text-gray-500 tracking-wider uppercase mb-1">
             NOTE
           </h4>
+          {invoice?.notes && !invoice.notes.startsWith('[') ? (
+            <p className="text-xs text-gray-500 leading-relaxed italic mb-2">
+              "{invoice.notes}"
+            </p>
+          ) : null}
           <p className="text-xs text-gray-500 leading-relaxed">
-            Please include the invoice number {invoiceNo} in all payment
-            communications.
+            Please include the invoice number <span className="font-semibold">{invoiceNo}</span> in all payment communications.
             <br />
             Thank you for your continued partnership with LogiFlow.
           </p>
@@ -124,7 +200,7 @@ const InvoiceCard = ({ invoice }) => {
             <span className="font-bold text-gray-900">${subtotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
           </div>
           <div className="flex justify-between text-gray-600 border-b border-gray-300 pb-2">
-            <span>Tax (8%)</span>
+            <span>Tax ({invoice?.taxRate !== undefined ? invoice.taxRate : '8'}%)</span>
             <span className="font-bold text-gray-900">${tax.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
           </div>
           <div className="flex justify-between items-center pt-1">
@@ -139,4 +215,4 @@ const InvoiceCard = ({ invoice }) => {
   );
 }
 
-export default InvoiceCard
+export default InvoiceCard;
