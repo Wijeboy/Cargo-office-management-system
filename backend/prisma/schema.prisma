@@ -1,5 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// This is your Prisma schema file.
+// Learn more at: https://pris.ly/d/prisma-schema
 
 generator client {
   provider = "prisma-client-js"
@@ -11,38 +11,57 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  name         String
-  email        String   @unique
-  passwordHash String
-  role         String   @default("OPERATIONS")
-  department   String?
-  phone        String?
-  avatar       String?
-  timezone     String?
-  bio          String?
-  location     String?
-  twoFA            Boolean  @default(false)
-  prefSystemAlerts Boolean  @default(true)
-  prefWeeklyReport Boolean  @default(true)
-  prefBetaFeatures Boolean  @default(false)
-  status           Boolean  @default(true)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id               String  @id @default(cuid())
+  name             String
+  email            String  @unique
+  passwordHash     String
+  role             String  @default("OPERATIONS")
+  department       String?
+  phone            String?
+  avatar           String?
+  timezone         String?
+  bio              String?
+  location         String?
+  twoFA            Boolean @default(false)
+  prefSystemAlerts Boolean @default(true)
+  prefWeeklyReport Boolean @default(true)
+  prefBetaFeatures Boolean @default(false)
+  status           Boolean @default(true)
+
+  notifications Notification[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Customer {
-  id               String     @id @default(cuid())
-  name             String
-  contactNo        String
-  email            String     @unique
-  address          String
-  company          String?
-  registrationDate DateTime   @default(now())
-  shipments        Shipment[]
-  invoices         Invoice[]
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
+  id                String   @id @default(cuid())
+  customerCode      String?  @unique
+  name              String
+  firstName         String?
+  lastName          String?
+  customerType      String   @default("INDIVIDUAL")
+  contactNo         String
+  alternativeNumber String?
+  email             String   @unique
+  address           String
+  city              String?
+  country           String?
+  postalCode        String?
+  company           String?
+  preferredChannel  String   @default("EMAIL")
+  status            String   @default("ACTIVE")
+  registrationDate  DateTime @default(now())
+
+  shipments     Shipment[]
+  invoices      Invoice[]
+  inquiries     Inquiry[]
+  complaints    Complaint[]
+  feedback      Feedback[]
+  notifications Notification[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Shipment {
@@ -105,11 +124,83 @@ model WarehouseItem {
 }
 
 model Notification {
-  id        String   @id @default(cuid())
-  userId    String
-  title     String
-  message   String
-  type      String   @default("INFO")
-  isRead    Boolean  @default(false)
+  id String @id @default(cuid())
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  recipientEmail String?
+  title          String
+  message        String
+  type           String  @default("INFO")
+  isRead         Boolean @default(false)
+
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Inquiry {
+  id        String @id @default(cuid())
+  inquiryNo String @unique
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  name       String
+  email      String
+  contactNo  String?
+  subject    String
+  message    String
+  category   String?
+  priority   String  @default("MEDIUM")
+  status     String  @default("OPEN")
+  assignedTo String?
+  response   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Complaint {
+  id          String @id @default(cuid())
+  complaintNo String @unique
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  name           String
+  email          String
+  contactNo      String?
+  subject        String
+  description    String
+  category       String?
+  priority       String  @default("MEDIUM")
+  status         String  @default("OPEN")
+  assignedTo     String?
+  resolutionNote String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Feedback {
+  id         String @id @default(cuid())
+  feedbackNo String @unique
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  name      String
+  email     String
+  contactNo String?
+  rating    Int
+  comment   String
+  category  String?
+  status    String  @default("NEW")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
