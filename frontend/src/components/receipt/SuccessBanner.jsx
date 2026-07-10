@@ -1,4 +1,4 @@
-import React from 'react'
+import React from "react";
 import { CheckCircle2, Download, Printer } from "lucide-react";
 
 const SuccessBanner = ({ invoiceNumber }) => {
@@ -24,7 +24,10 @@ const SuccessBanner = ({ invoiceNumber }) => {
         <button className="flex items-center justify-center gap-2 bg-[#0b192c] text-white px-5 py-2.5 rounded-xl font-medium text-sm hover:bg-slate-800 transition">
           <Download size={16} /> Download PDF
         </button>
-        <button className="flex items-center justify-center gap-2 bg-[#e2ecf9] text-[#1e3a8a] px-5 py-2.5 rounded-xl font-medium text-sm hover:bg-blue-100 transition">
+        <button
+          onClick={() => window.print()}
+          className="flex items-center justify-center gap-2 bg-[#e2ecf9] text-[#1e3a8a] px-5 py-2.5 rounded-xl font-medium text-sm hover:bg-blue-100 transition"
+        >
           <Printer size={16} /> Print Receipt
         </button>
       </div>
@@ -32,4 +35,4 @@ const SuccessBanner = ({ invoiceNumber }) => {
   );
 };
 
-export default SuccessBanner
+export default SuccessBanner;
