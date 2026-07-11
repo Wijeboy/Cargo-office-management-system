@@ -9,6 +9,7 @@ import authRoutes from './src/routes/authRoutes.js';
 import userRoutes from './src/routes/userRoutes.js';
 import customerRoutes from './src/routes/customerRoutes.js';
 import inquiryRoutes from './src/routes/inquiryRoutes.js';
+import complaintRoutes from './src/routes/complaintRoutes.js';
 
 // Load environment variables
 dotenv.config();
@@ -53,6 +54,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/inquiries', inquiryRoutes);
+app.use('/api/complaints', complaintRoutes);
 
 // Health check route
 app.get('/api/health', async (req, res) => {
