@@ -12,6 +12,7 @@ import inquiryRoutes from './src/routes/inquiryRoutes.js';
 import complaintRoutes from './src/routes/complaintRoutes.js';
 import feedbackRoutes from './src/routes/feedbackRoutes.js';
 import notificationRoutes from './src/routes/notificationRoutes.js';
+import dashboardRoutes from './src/routes/dashboardRoutes.js';
 
 // Load environment variables
 dotenv.config();
@@ -59,6 +60,7 @@ app.use('/api/inquiries', inquiryRoutes);
 app.use('/api/complaints', complaintRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Health check route
 app.get('/api/health', async (req, res) => {
