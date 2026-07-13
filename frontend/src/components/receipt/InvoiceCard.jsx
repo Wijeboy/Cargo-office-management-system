@@ -37,18 +37,29 @@ const InvoiceCard = ({ invoice }) => {
   const tax = invoice?.tax ?? 0;
   const total = invoice?.totalAmount ?? invoice?.total ?? 0;
   const subtotal = total - tax;
+  const calculatedTaxRate = subtotal > 0 ? Math.round((tax / subtotal) * 100) : 8;
   const invoiceNo = invoice?.invoiceNo || 'INV-1043';
 
   // Get line items from database invoice notes or fallback
   let receiptItems = [];
+  let customNotes = '';
   if (invoice?.notes) {
     try {
       const parsed = JSON.parse(invoice.notes);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        receiptItems = parsed;
+      if (parsed && typeof parsed === 'object') {
+        if (Array.isArray(parsed.items)) {
+          receiptItems = parsed.items;
+          customNotes = parsed.customNotes || '';
+        } else if (Array.isArray(parsed)) {
+          // Backward compatibility with legacy direct array structure
+          receiptItems = parsed;
+        }
+      } else {
+        customNotes = String(invoice.notes);
       }
     } catch (e) {
       // notes is plain text, not JSON
+      customNotes = invoice.notes;
     }
   }
 
@@ -183,9 +194,9 @@ const InvoiceCard = ({ invoice }) => {
           <h4 className="text-xs font-bold text-gray-500 tracking-wider uppercase mb-1">
             NOTE
           </h4>
-          {invoice?.notes && !invoice.notes.startsWith('[') ? (
+          {customNotes ? (
             <p className="text-xs text-gray-500 leading-relaxed italic mb-2">
-              "{invoice.notes}"
+              "{customNotes}"
             </p>
           ) : null}
           <p className="text-xs text-gray-500 leading-relaxed">
@@ -200,7 +211,7 @@ const InvoiceCard = ({ invoice }) => {
             <span className="font-bold text-gray-900">${subtotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
           </div>
           <div className="flex justify-between text-gray-600 border-b border-gray-300 pb-2">
-            <span>Tax ({invoice?.taxRate !== undefined ? invoice.taxRate : '8'}%)</span>
+            <span>Tax ({calculatedTaxRate}%)</span>
             <span className="font-bold text-gray-900">${tax.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
           </div>
           <div className="flex justify-between items-center pt-1">
