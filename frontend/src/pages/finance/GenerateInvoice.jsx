@@ -12,7 +12,6 @@ const emptyLine = () => ({
 
 export default function GenerateInvoice({ onNavigate }) {
   const [client, setClient] = useState("");
-  const [invoiceNumber] = useState("INV-1043");
   const [issueDate, setIssueDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [lines, setLines] = useState([emptyLine()]);
@@ -41,6 +40,7 @@ export default function GenerateInvoice({ onNavigate }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const invoiceNumber = `INV-${Date.now().toString().slice(-4)}`;
     const invoice = {
       id: `tmp-${Date.now()}`,
       invoiceNo: invoiceNumber,
@@ -75,7 +75,7 @@ export default function GenerateInvoice({ onNavigate }) {
           <h1 className="text-xl font-semibold text-gray-900">Generate Invoice</h1>
         </div>
         <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">
-          {invoiceNumber}
+          Draft
         </span>
       </div>
 

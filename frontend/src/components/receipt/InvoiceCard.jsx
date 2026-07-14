@@ -39,7 +39,7 @@ const InvoiceCard = ({ invoice, receipt }) => {
   const total = source?.totalAmount ?? source?.total ?? 0;
   const subtotal = total - tax;
   const calculatedTaxRate = subtotal > 0 ? Math.round((tax / subtotal) * 100) : 8;
-  const invoiceNo = source?.invoiceNo || 'INV-1043';
+  const invoiceNo = source?.invoiceNo || 'N/A';
 
   let receiptItems = source?.items || [];
   let customNotes = '';

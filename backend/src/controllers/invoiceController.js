@@ -76,9 +76,6 @@ export async function getInvoiceReceipt(req, res) {
       include: {
         customer: true,
         shipment: true,
-        payments: {
-          orderBy: { paymentDate: 'desc' },
-        },
       },
     });
 
@@ -98,9 +95,14 @@ export async function getInvoiceReceipt(req, res) {
       });
     }
 
-    const latestPayment = invoice.payments[invoice.payments.length - 1];
+    const payments = await prisma.payment.findMany({
+      where: { invoiceId: id, status: 'COMPLETED' },
+      orderBy: { paymentDate: 'desc' },
+    });
+
+    const latestPayment = payments[0] || null;
     const subtotal = round2(invoice.totalAmount - (invoice.tax || 0));
-    const amountPaid = round2(invoice.payments.filter((payment) => payment.status === 'COMPLETED').reduce((sum, payment) => sum + payment.amount, 0));
+    const amountPaid = round2(payments.reduce((sum, payment) => sum + payment.amount, 0));
     const balanceDue = round2(Math.max(invoice.totalAmount - amountPaid, 0));
     const change = round2(Math.max(amountPaid - invoice.totalAmount, 0));
 
