@@ -50,11 +50,16 @@ import PrintReceipt from "./pages/finance/PrintReceipt";
 
 
 // Other pages
-import WarehouseList from "./pages/warehouse/WarehouseList";
 import UserList from "./pages/users/UserList";
 import MyProfile from "./pages/profile/MyProfile";
 import PublicTrackCargo from "./pages/public/PublicTrackCargo";
 import NotFound from "./pages/NotFound";
+import AdminInventory from "../../admin/src/pages/Inventory";
+import AdminIncomingCargo from "../../admin/src/pages/IncomingCargo";
+import AdminOutgoingCargo from "../../admin/src/pages/OutgoingCargo";
+import AdminStorageAllocation from "../../admin/src/pages/StorageAllocation";
+import AdminDamageReport from "../../admin/src/pages/DamageReport";
+import "../../admin/src/styles/admin.css";
 
 // ─── Route Guards ─────────────────────────────────────────
 
@@ -229,7 +234,12 @@ function AppRoutes() {
       <Route path="/reports" element={<ProtectedRoute allowedRoles={['ADMIN', 'OPERATIONS']}><DashboardLayout><OperationsReports /></DashboardLayout></ProtectedRoute>} />
       <Route path="/history" element={<ProtectedRoute allowedRoles={['ADMIN', 'OPERATIONS']}><DashboardLayout><ShipmentHistory /></DashboardLayout></ProtectedRoute>} />
       <Route path="/users" element={<ProtectedRoute allowedRoles={['ADMIN']}><DashboardLayout><UserList /></DashboardLayout></ProtectedRoute>} />
-      <Route path="/warehouse" element={<ProtectedRoute allowedRoles={['ADMIN', 'WAREHOUSE']}><DashboardLayout><WarehouseList /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/warehouse" element={<ProtectedRoute allowedRoles={['ADMIN', 'WAREHOUSE']}><DashboardLayout><AdminInventory /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/warehouse/inventory" element={<Navigate to="/warehouse" replace />} />
+      <Route path="/warehouse/incoming" element={<ProtectedRoute allowedRoles={['ADMIN', 'WAREHOUSE']}><DashboardLayout><AdminIncomingCargo /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/warehouse/outgoing" element={<ProtectedRoute allowedRoles={['ADMIN', 'WAREHOUSE']}><DashboardLayout><AdminOutgoingCargo /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/warehouse/storage" element={<ProtectedRoute allowedRoles={['ADMIN', 'WAREHOUSE']}><DashboardLayout><AdminStorageAllocation /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/warehouse/damage-reports" element={<ProtectedRoute allowedRoles={['ADMIN', 'WAREHOUSE']}><DashboardLayout><AdminDamageReport /></DashboardLayout></ProtectedRoute>} />
 
       {/* Protected Customer Service routes (for Staff) */}
       <Route path="/customers" element={<ProtectedRoute allowedRoles={['ADMIN', 'CUSTOMER_SERVICE']}><CustomerServiceLayout><CustomerList /></CustomerServiceLayout></ProtectedRoute>} />

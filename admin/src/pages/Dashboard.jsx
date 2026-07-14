@@ -1,21 +1,51 @@
-import { AlertCircle, DollarSign, Package, Truck, UsersRound } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { AlertCircle, Package, Truck, UsersRound } from 'lucide-react'
 import PageHeader from '../components/ui/PageHeader'
 import StatCard from '../components/ui/StatCard'
 import StatusBadge from '../components/ui/StatusBadge'
-import { recentShipments } from '../data/adminData'
-
-const bars = [245, 310, 285, 400, 355, 480, 425]
-const days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
+import { warehouseApi } from '../services/warehouseApi'
 
 export default function Dashboard() {
+  const [dashboard, setDashboard] = useState({
+    stats: { totalShipments: 0, activeUsers: 0, pendingDeliveries: 0, openIncidents: 0 },
+    shipmentVolume: [],
+    systemHealth: { efficiency: 0, deliveredPercent: 0, inTransitPercent: 0, delayedPercent: 0 },
+    recentShipments: [],
+  })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let ignore = false
+    async function loadDashboard() {
+      setLoading(true)
+      setError('')
+      try {
+        const data = await warehouseApi.dashboard()
+        if (!ignore) setDashboard(data.dashboard)
+      } catch (err) {
+        if (!ignore) setError(err.message)
+      } finally {
+        if (!ignore) setLoading(false)
+      }
+    }
+    loadDashboard()
+    return () => {
+      ignore = true
+    }
+  }, [])
+
+  const maxVolume = Math.max(...dashboard.shipmentVolume.map((day) => day.count), 1)
+
   return (
     <>
       <PageHeader title="Warehouse Dashboard Overview" subtitle="Real-time intelligence and fleet logistics monitoring" />
+      {error && <p className="error-text">{error}</p>}
       <section className="stats-grid">
-        <StatCard icon={Truck} label="Total Shipments" value="12,450" trend="+12.5%" />
-        <StatCard icon={DollarSign} label="Revenue" value="$842k" trend="-2.4%" tone="red" />
-        <StatCard icon={UsersRound} label="Active Users" value="1,205" trend="+5.7%" tone="green" />
-        <StatCard icon={AlertCircle} label="Pending Deliveries" value="428" trend="+18.2%" tone="orange" />
+        <StatCard icon={Truck} label="Total Shipments" value={dashboard.stats.totalShipments} trend="Live" />
+        <StatCard icon={Package} label="Storage Occupancy" value={`${dashboard.stats.storageOccupancyRate || 0}%`} trend="Live" tone="red" />
+        <StatCard icon={UsersRound} label="Active Users" value={dashboard.stats.activeUsers} trend="Live" tone="green" />
+        <StatCard icon={AlertCircle} label="Pending Deliveries" value={dashboard.stats.pendingDeliveries} trend={`${dashboard.stats.openIncidents} incidents`} tone="orange" />
       </section>
 
       <section className="dashboard-charts">
@@ -27,10 +57,10 @@ export default function Dashboard() {
           <div className="bar-chart">
             <div className="axis-labels"><span>600</span><span>450</span><span>300</span><span>150</span><span>0</span></div>
             <div className="bars">
-              {bars.map((height, index) => (
-                <div className="bar-column" key={days[index]}>
-                  <span className="bar" style={{ height: `${height / 1.35}px` }} />
-                  <small>{days[index]}</small>
+              {dashboard.shipmentVolume.map((item) => (
+                <div className="bar-column" key={item.day}>
+                  <span className="bar" style={{ height: `${Math.max((item.count / maxVolume) * 240, item.count ? 28 : 4)}px` }} />
+                  <small>{item.day}</small>
                 </div>
               ))}
             </div>
@@ -39,11 +69,11 @@ export default function Dashboard() {
 
         <article className="panel health-panel">
           <div className="panel-title"><div><h2>System Health</h2><p>Real-time delivery status tracking</p></div></div>
-          <div className="donut"><div><strong>94%</strong><span>Efficiency</span></div></div>
+          <div className="donut"><div><strong>{dashboard.systemHealth.efficiency}%</strong><span>Efficiency</span></div></div>
           <ul className="legend">
-            <li><i className="green" /> Delivered <b>72%</b></li>
-            <li><i className="blue" /> In Transit <b>22%</b></li>
-            <li><i className="red" /> Delayed <b>6%</b></li>
+            <li><i className="green" /> Delivered <b>{dashboard.systemHealth.deliveredPercent}%</b></li>
+            <li><i className="blue" /> In Transit <b>{dashboard.systemHealth.inTransitPercent}%</b></li>
+            <li><i className="red" /> Delayed <b>{dashboard.systemHealth.delayedPercent}%</b></li>
           </ul>
         </article>
       </section>
@@ -54,17 +84,18 @@ export default function Dashboard() {
           <table>
             <thead><tr><th>Order ID</th><th>Customer</th><th>Destination</th><th>Status</th><th>Arrival</th><th>Action</th></tr></thead>
             <tbody>
-              {recentShipments.map(([id, initials, name, destination, status, arrival]) => (
-                <tr key={id}>
-                  <td><a>{id}</a></td>
-                  <td><span className="person"><i className="avatar">{initials}</i>{name}</span></td>
-                  <td>{destination}</td><td><StatusBadge>{status}</StatusBadge></td><td>{arrival}</td><td>⋮</td>
+              {loading && <tr><td colSpan="6">Loading dashboard...</td></tr>}
+              {!loading && dashboard.recentShipments.map((shipment) => (
+                <tr key={shipment.orderId}>
+                  <td><a>{shipment.orderId}</a></td>
+                  <td><span className="person"><i className="avatar">{shipment.customerInitials}</i>{shipment.customer}</span></td>
+                  <td>{shipment.destination}</td><td><StatusBadge>{shipment.status}</StatusBadge></td><td>{shipment.arrival}</td><td>⋮</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <footer className="table-footer"><span>Showing 4 of 428 shipments</span><div><button>Prev</button><button className="dark">Next</button></div></footer>
+        <footer className="table-footer"><span>Showing {dashboard.recentShipments.length} recent shipments</span><div><button>Prev</button><button className="dark">Next</button></div></footer>
       </article>
     </>
   )
