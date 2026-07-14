@@ -104,6 +104,90 @@ model WarehouseItem {
   updatedAt         DateTime @updatedAt
 }
 
+model InventoryItem {
+  id          String   @id @default(cuid())
+  itemCode    String   @unique
+  name        String
+  category    String
+  quantity    Int      @default(0)
+  location    String
+  weight      Float    @default(0)
+  weightUnit  String   @default("kg")
+  minStock    Int      @default(10)
+  description String?
+  status      String   @default("In Stock")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model IncomingCargo {
+  id              String   @id @default(cuid())
+  cargoCode       String   @unique
+  senderCompany   String
+  origin          String
+  itemName        String
+  quantity        Int      @default(0)
+  quantityUnit    String   @default("units")
+  weight          Float    @default(0)
+  weightUnit      String   @default("kg")
+  progress        Int      @default(0)
+  status          String   @default("In Transit")
+  expectedArrival DateTime?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model OutgoingCargo {
+  id              String   @id @default(cuid())
+  shipmentCode    String   @unique
+  consignee       String
+  destination     String
+  itemName        String
+  quantity        Int      @default(0)
+  quantityUnit    String   @default("units")
+  weight          Float    @default(0)
+  weightUnit      String   @default("kg")
+  shipDate        DateTime?
+  status          String   @default("Processing")
+  trackingId      String   @unique
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model StorageSection {
+  id            String   @id @default(cuid())
+  sectionCode   String   @unique
+  zone          String
+  location      String
+  currentItems  String?
+  occupiedUnits Int      @default(0)
+  capacityUnits Int
+  status        String   @default("Available")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model CargoIncident {
+  id              String   @id @default(cuid())
+  reportCode      String   @unique
+  shipmentId      String
+  incidentType    String
+  severity        String
+  reportDate      DateTime @default(now())
+  location        String
+  itemDescription String
+  quantityAffected Int     @default(0)
+  estimatedValue  Float    @default(0)
+  description     String
+  reportedBy      String
+  status          String   @default("Under Review")
+  attachmentUrl   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
 model Notification {
   id        String   @id @default(cuid())
   userId    String
