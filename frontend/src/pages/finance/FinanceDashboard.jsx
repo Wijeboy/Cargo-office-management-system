@@ -95,7 +95,7 @@ export default function FinanceDashboard({ onNavigate }) {
       </div>
 
       {/* Transactions */}
-      <TransactionsTable />
+      <TransactionsTable onNavigate={onNavigate} />
     </div>
   );
 }
