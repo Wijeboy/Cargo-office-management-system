@@ -14,7 +14,8 @@ export default function App() {
     <Routes>
       <Route element={<AdminLayout />}>
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/warehouse/inventory" element={<Inventory />} />
+        <Route path="/warehouse" element={<Inventory />} />
+        <Route path="/warehouse/inventory" element={<Navigate to="/warehouse" replace />} />
         <Route path="/warehouse/incoming" element={<IncomingCargo />} />
         <Route path="/warehouse/outgoing" element={<OutgoingCargo />} />
         <Route path="/warehouse/storage" element={<StorageAllocation />} />
