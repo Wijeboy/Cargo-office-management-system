@@ -41,12 +41,12 @@ const statusStyles = {
   Overdue: "bg-rose-50 text-rose-600",
 };
 
-export default function TransactionsTable() {
+export default function TransactionsTable({ onNavigate }) {
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
         <p className="text-sm font-semibold text-gray-900">Recent Transactions</p>
-        <button className="text-xs font-medium text-indigo-600 hover:text-indigo-700">
+        <button  onClick={() => onNavigate("invoices")} className="text-xs font-medium text-indigo-600 hover:text-indigo-700">
           View All
         </button>
       </div>

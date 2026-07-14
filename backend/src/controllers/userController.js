@@ -113,7 +113,7 @@ export async function getUserById(req, res) {
  * Create a new user (Admin action).
  */
 export async function createUser(req, res) {
-  const { name, email, password, role, department, phone, status, avatar } = req.body;
+  const { name, email, password, role, department, phone, status } = req.body;
 
   if (!name || !email || !password) {
     return res.status(400).json({
@@ -150,7 +150,6 @@ export async function createUser(req, res) {
         department: department || null,
         phone: phone || null,
         status: status !== undefined ? status : true,
-        avatar: avatar || null,
       },
     });
 
@@ -178,7 +177,7 @@ export async function createUser(req, res) {
  */
 export async function updateUser(req, res) {
   const { id } = req.params;
-  const { name, email, password, role, department, phone, status, avatar } = req.body;
+  const { name, email, password, role, department, phone, status } = req.body;
 
   try {
     const user = await prisma.user.findUnique({
@@ -200,7 +199,6 @@ export async function updateUser(req, res) {
     if (department !== undefined) updateData.department = department;
     if (phone !== undefined) updateData.phone = phone;
     if (status !== undefined) updateData.status = status;
-    if (avatar !== undefined) updateData.avatar = avatar;
 
     if (email !== undefined && email.toLowerCase() !== user.email) {
       // Check if new email is already taken

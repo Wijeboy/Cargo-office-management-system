@@ -7,6 +7,11 @@ import { PrismaClient } from '@prisma/client';
 import authRoutes from './src/routes/authRoutes.js';
 import userRoutes from './src/routes/userRoutes.js';
 import warehouseRoutes from './src/routes/warehouseRoutes.js';
+import invoiceRoutes from './src/routes/invoiceRoutes.js';
+import paymentRoutes from './src/routes/paymentRoutes.js';
+import expenseRoutes from './src/routes/expenseRoutes.js';
+import financeRoutes from './src/routes/financeRoutes.js';
+
 
 // Load environment variables
 dotenv.config();
@@ -30,8 +35,8 @@ app.use(cors({
   credentials: true
 }));
 app.use(morgan('dev'));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api/auth', authRoutes);
