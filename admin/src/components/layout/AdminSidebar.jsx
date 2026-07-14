@@ -6,7 +6,7 @@ import {
 
 const navigation = [
   ['/dashboard', 'Dashboard', LayoutDashboard],
-  ['/warehouse/inventory', 'Inventory Management', Package],
+  ['/warehouse', 'Warehouse Log', Package],
   ['/warehouse/incoming', 'Incoming Cargo', PackagePlus],
   ['/warehouse/outgoing', 'Outgoing Cargo', PackageMinus],
   ['/warehouse/storage', 'Storage Allocation', Grid3X3],
