@@ -45,18 +45,56 @@ model Customer {
   updatedAt        DateTime   @updatedAt
 }
 
+model Route {
+  id            String    @id @default(cuid())
+  routeId       String    @unique
+  startHub      String
+  endHub        String
+  estimatedDays Float
+  isActive      Boolean   @default(true)
+  shipments     Shipment[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Vehicle {
+  id          String    @id @default(cuid())
+  vehicleId   String    @unique
+  type        String
+  capacity    Float
+  status      String    @default("Available")
+  description String?
+  shipments   Shipment[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
 model Shipment {
   id             String          @id @default(cuid())
   shipmentCode   String          @unique
-  customerId     String
-  customer       Customer        @relation(fields: [customerId], references: [id])
+  customerId     String?
+  customer       Customer?       @relation(fields: [customerId], references: [id])
+  routeId        String?
+  route          Route?          @relation(fields: [routeId], references: [id])
+  vehicleId      String?
+  vehicle        Vehicle?        @relation(fields: [vehicleId], references: [id])
+  senderName     String
+  senderContact  String
+  senderAddress  String
+  consigneeName  String
+  consigneeContact String
+  consigneeAddress String
   origin         String
   destination    String
   weight         Float
   description    String?
+  dimensions     String?
+  shippingMethod String?
+  expectedDeliveryDate DateTime?
   status         String          @default("PENDING")
   dispatchDate   DateTime?
   deliveryDate   DateTime?
+  archivedAt     DateTime?
   trackingEvents TrackingEvent[]
   warehouseItems WarehouseItem[]
   invoices       Invoice[]

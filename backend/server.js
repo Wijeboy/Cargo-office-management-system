@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
 import authRoutes from './src/routes/authRoutes.js';
+import cargoRoutes from './src/routes/cargoRoutes.js';
 import userRoutes from './src/routes/userRoutes.js';
 
 // Load environment variables
@@ -35,6 +36,7 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/cargo', cargoRoutes);
 
 // Health check route
 app.get('/api/health', async (req, res) => {
