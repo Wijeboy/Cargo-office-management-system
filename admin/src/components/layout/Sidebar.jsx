@@ -18,9 +18,9 @@ const menuItems = [
     path: '/dashboard',
   },
   {
-    title: 'Inventory Management',
+    title: 'Warehouse Log',
     icon: PackageOpen,
-    path: '/warehouse/inventory',
+    path: '/warehouse',
   },
   {
     title: 'Incoming Cargo',
