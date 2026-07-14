@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { MOCK_SHIPMENTS, MOCK_TRACKING_EVENTS } from '../../data/mockData';
+import { fetchTracking } from '../../lib/cargoApi';
 
 /* ── Milestone order & labels ──────────────────────────── */
 const MILESTONE_ORDER = ['PENDING', 'PICKED_UP', 'PROCESSING', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED'];
@@ -21,10 +21,13 @@ const SHIP_STATUS_BADGE = {
   CANCELLED:        { label: 'Cancelled',         cls: 'bg-error-container text-on-error-container' },
 };
 
-function getMilestoneIdx(events) {
-  if (!events?.length) return 0;
+function getMilestoneIdx(events, shipmentStatus) {
+  if (!events?.length) {
+    const idx = MILESTONE_ORDER.indexOf(shipmentStatus);
+    return idx === -1 ? 0 : idx;
+  }
   const last = events[events.length - 1].status;
-  const idx  = MILESTONE_ORDER.indexOf(last);
+  const idx = MILESTONE_ORDER.indexOf(last);
   return idx === -1 ? 1 : idx;
 }
 
@@ -35,7 +38,6 @@ export default function PublicTrackCargo() {
   const [events,   setEvents]   = useState([]);
   const [loading,  setLoading]  = useState(false);
 
-  /* ── Search handler ── */
   const handleTrack = async (e) => {
     e?.preventDefault();
     const code = query.trim();
@@ -45,24 +47,28 @@ export default function PublicTrackCargo() {
     setShipment(null);
     setEvents([]);
 
-    await new Promise(r => setTimeout(r, 900));
-
-    const found = MOCK_SHIPMENTS.find(
-      s => s.shipmentCode.toLowerCase() === code.toLowerCase()
-    );
-
-    if (found) {
-      setShipment(found);
-      setEvents(MOCK_TRACKING_EVENTS[found.shipmentCode] || []);
-    } else {
-      // ── Navigate to 404 page ──
+    try {
+      const data = await fetchTracking(code);
+      const s = data.shipment;
+      setShipment({
+        ...s,
+        customerName: s.customerName || s.senderName,
+      });
+      setEvents((data.tracking?.timeline || []).map((ev) => ({
+        status: ev.status,
+        description: ev.label || ev.description,
+        timestamp: ev.date,
+        location: ev.location,
+      })));
+    } catch {
+      setLoading(false);
       navigate('/not-found', { state: { trackingCode: code } });
       return;
     }
     setLoading(false);
   };
 
-  const milestoneIdx = getMilestoneIdx(events);
+  const milestoneIdx = getMilestoneIdx(events, shipment?.status);
   const badge        = SHIP_STATUS_BADGE[shipment?.status] || SHIP_STATUS_BADGE.PENDING;
 
   return (
@@ -122,6 +128,7 @@ export default function PublicTrackCargo() {
 
         {/* ── Search bar ── */}
         <form
+          id="public-track-form"
           onSubmit={handleTrack}
           className="w-full max-w-3xl"
         >
@@ -151,11 +158,16 @@ export default function PublicTrackCargo() {
           {/* Quick-try chips */}
           <div className="mt-3 flex flex-wrap gap-2 items-center justify-center">
             <span className="text-xs text-on-surface-variant">Try:</span>
-            {['LOG-2401', 'LOG-2402', 'LOG-2398'].map(code => (
+            {['LOG-2401', 'LOG-2402', 'LOG-2398'].map((code) => (
               <button
                 key={code}
                 type="button"
-                onClick={() => setQuery(code)}
+                onClick={() => {
+                  setQuery(code);
+                  setTimeout(() => {
+                    document.getElementById('public-track-form')?.requestSubmit();
+                  }, 0);
+                }}
                 className="text-xs font-mono text-[#009adb] border border-[#009adb]/30 bg-[#009adb]/5 hover:bg-[#009adb]/10 px-2.5 py-1 rounded-full transition-colors"
               >
                 {code}

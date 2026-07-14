@@ -6,16 +6,13 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('Seeding database...');
   
-  await prisma.cargoIncident.deleteMany({});
-  await prisma.storageSection.deleteMany({});
-  await prisma.outgoingCargo.deleteMany({});
-  await prisma.incomingCargo.deleteMany({});
-  await prisma.inventoryItem.deleteMany({});
-  // Clear existing records to avoid unique constraint violations
-  await prisma.payment.deleteMany({});
-  await prisma.expense.deleteMany({});
+  // Clear existing data to avoid unique constraint violations
+  await prisma.trackingEvent.deleteMany({});
+  await prisma.warehouseItem.deleteMany({});
   await prisma.invoice.deleteMany({});
   await prisma.shipment.deleteMany({});
+  await prisma.vehicle.deleteMany({});
+  await prisma.route.deleteMany({});
   await prisma.customer.deleteMany({});
   await prisma.user.deleteMany({});
   
@@ -72,273 +69,266 @@ async function main() {
     console.log(`Created user: ${user.email} (${user.role})`);
   }
 
-  await prisma.inventoryItem.createMany({
-    data: [
-      { itemCode: 'INV-001', name: 'Machine Parts XYZ-7', category: 'Machinery', quantity: 245, location: 'Warehouse A-12', weight: 1240, minStock: 25, status: 'In Stock' },
-      { itemCode: 'INV-002', name: 'Electronic Components', category: 'Electronics', quantity: 128, location: 'Warehouse B-05', weight: 320, minStock: 30, status: 'In Stock' },
-      { itemCode: 'INV-003', name: 'Textile Materials', category: 'Textiles', quantity: 45, location: 'Warehouse C-18', weight: 890, minStock: 50, status: 'Low Stock' },
-      { itemCode: 'INV-004', name: 'Automotive Parts', category: 'Automotive', quantity: 0, location: 'Warehouse A-08', weight: 2100, minStock: 20, status: 'Out of Stock' },
-      { itemCode: 'INV-005', name: 'Medical Equipment', category: 'Healthcare', quantity: 67, location: 'Warehouse D-03', weight: 540, minStock: 15, status: 'In Stock' },
-      { itemCode: 'INV-006', name: 'Food & Beverages', category: 'F&B', quantity: 312, location: 'Warehouse E-22', weight: 1850, minStock: 60, status: 'In Stock' },
-    ],
-  });
-
-  await prisma.incomingCargo.createMany({
-    data: [
-      { cargoCode: 'INC-001', senderCompany: 'Acme Logistics Inc.', origin: 'Los Angeles, CA', itemName: 'Machine Parts XYZ-7', quantity: 245, weight: 1240, progress: 65, status: 'In Transit', expectedArrival: new Date('2026-07-18') },
-      { cargoCode: 'INC-002', senderCompany: 'Global Exports Ltd.', origin: 'New York, NY', itemName: 'Electronic Components', quantity: 128, weight: 320, progress: 85, status: 'Arriving Soon', expectedArrival: new Date('2026-07-16') },
-      { cargoCode: 'INC-003', senderCompany: 'Pacific Freight Co.', origin: 'Seattle, WA', itemName: 'Textile Materials', quantity: 45, weight: 890, progress: 35, status: 'Delayed', expectedArrival: new Date('2026-07-20') },
-      { cargoCode: 'INC-004', senderCompany: 'MedCare Supplies', origin: 'Boston, MA', itemName: 'Medical Equipment', quantity: 67, weight: 540, progress: 55, status: 'In Transit', expectedArrival: new Date('2026-07-19') },
-    ],
-  });
-
-  await prisma.outgoingCargo.createMany({
-    data: [
-      { shipmentCode: 'OUT-001', consignee: 'Apex Manufacturing Solutions', destination: 'San Francisco, CA', itemName: 'Machine Parts XYZ-7', quantity: 245, weight: 1240, shipDate: new Date('2026-07-14'), status: 'Dispatched', trackingId: 'TRK-7832451' },
-      { shipmentCode: 'OUT-002', consignee: 'Tech Innovations Inc.', destination: 'Austin, TX', itemName: 'Electronic Components', quantity: 128, weight: 320, shipDate: new Date('2026-07-15'), status: 'Pending Pickup', trackingId: 'TRK-7832452' },
-      { shipmentCode: 'OUT-003', consignee: 'Global Fashion Co.', destination: 'New York, NY', itemName: 'Textile Materials', quantity: 45, weight: 890, shipDate: new Date('2026-07-13'), status: 'In Transit', trackingId: 'TRK-7832453' },
-      { shipmentCode: 'OUT-004', consignee: 'Auto Parts Direct', destination: 'Detroit, MI', itemName: 'Automotive Parts', quantity: 40, weight: 2100, shipDate: new Date('2026-07-16'), status: 'Processing', trackingId: 'TRK-7832454' },
-      { shipmentCode: 'OUT-005', consignee: 'MedCare Supplies', destination: 'Boston, MA', itemName: 'Medical Equipment', quantity: 67, weight: 540, shipDate: new Date('2026-07-14'), status: 'Delivered', trackingId: 'TRK-7832455' },
-      { shipmentCode: 'OUT-006', consignee: 'Fresh Market Foods', destination: 'Portland, OR', itemName: 'Food & Beverages', quantity: 312, weight: 1850, shipDate: new Date('2026-07-17'), status: 'Pending Pickup', trackingId: 'TRK-7832456' },
-    ],
-  });
-
-  await prisma.storageSection.createMany({
-    data: [
-      { sectionCode: 'A-01', zone: 'Zone A', location: 'Row 1, Bay 1', currentItems: 'Machine Parts', occupiedUnits: 42, capacityUnits: 50, status: 'Occupied' },
-      { sectionCode: 'A-02', zone: 'Zone A', location: 'Row 1, Bay 2', currentItems: null, occupiedUnits: 0, capacityUnits: 50, status: 'Available' },
-      { sectionCode: 'A-03', zone: 'Zone A', location: 'Row 1, Bay 3', currentItems: 'Electronics', occupiedUnits: 48, capacityUnits: 50, status: 'Occupied' },
-      { sectionCode: 'B-01', zone: 'Zone B', location: 'Row 2, Bay 1', currentItems: 'Textiles', occupiedUnits: 32, capacityUnits: 45, status: 'Occupied' },
-      { sectionCode: 'B-02', zone: 'Zone B', location: 'Row 2, Bay 2', currentItems: null, occupiedUnits: 0, capacityUnits: 45, status: 'Available' },
-      { sectionCode: 'C-01', zone: 'Zone C', location: 'Row 3, Bay 1', currentItems: 'Medical Equipment', occupiedUnits: 38, capacityUnits: 40, status: 'Occupied' },
-    ],
-  });
-
-  await prisma.cargoIncident.createMany({
-    data: [
-      { reportCode: 'DMG-001', shipmentId: 'LOG-2401', incidentType: 'Damage', severity: 'Minor', reportDate: new Date('2026-07-14'), location: 'Warehouse A-12', itemDescription: 'Machine Parts XYZ-7', quantityAffected: 3, estimatedValue: 850, description: 'Small scratches found on outer casing during receiving inspection.', reportedBy: 'Warehouse Operator', status: 'Under Review' },
-      { reportCode: 'DMG-002', shipmentId: 'LOG-2398', incidentType: 'Lost', severity: 'Critical', reportDate: new Date('2026-07-12'), location: 'Transit Hub 2', itemDescription: 'Electronic Components', quantityAffected: 12, estimatedValue: 5200, description: 'Carton missing after transfer scan reconciliation.', reportedBy: 'Operations Manager', status: 'Investigating' },
-      { reportCode: 'DMG-003', shipmentId: 'LOG-2405', incidentType: 'Damage', severity: 'Major', reportDate: new Date('2026-07-13'), location: 'Warehouse C-18', itemDescription: 'Textile Materials', quantityAffected: 8, estimatedValue: 1300, description: 'Water exposure detected on multiple packages.', reportedBy: 'Warehouse Operator', status: 'Resolved' },
-      { reportCode: 'DMG-004', shipmentId: 'LOG-2412', incidentType: 'Damage', severity: 'Minor', reportDate: new Date('2026-07-14'), location: 'Warehouse D-03', itemDescription: 'Medical Equipment', quantityAffected: 1, estimatedValue: 2200, description: 'One crate seal broken during unloading.', reportedBy: 'Quality Control', status: 'Under Review' },
-    ],
-  });
-
-  // Seed Customers
-  const custApex = await prisma.customer.create({
-    data: {
-      id: 'cust_apex',
-      name: 'Apex Manufacturing',
-      contactNo: '+1 (555) 019-2834',
-      email: 'contact@apexmf.com',
-      address: '451 Industrial Parkway, Detroit, MI 48201',
-      company: 'Apex Manufacturing Ltd.',
-    }
-  });
-
-  const custGlobal = await prisma.customer.create({
-    data: {
-      id: 'cust_global',
-      name: 'Global Freight Co.',
-      contactNo: '+1 (555) 987-6543',
-      email: 'billing@globalfreight.com',
-      address: '88 Maritime Blvd, Miami, FL 33101',
-      company: 'Global Freight LLC',
-    }
-  });
-
-  console.log('Created customers.');
-
-  // Seed Shipments
-  const shipApex = await prisma.shipment.create({
-    data: {
-      id: 'ship_apex_001',
-      shipmentCode: 'LOG-2401',
-      customerId: custApex.id,
-      origin: 'Chicago, IL',
-      destination: 'Los Angeles, CA',
-      weight: 1250.0,
-      description: 'Cross-Country Freight & Server Components',
-      status: 'IN_TRANSIT',
-      dispatchDate: new Date('2026-07-01T09:00:00Z'),
-    }
-  });
-
-  const shipGlobal = await prisma.shipment.create({
-    data: {
-      id: 'ship_global_001',
-      shipmentCode: 'LOG-2402',
-      customerId: custGlobal.id,
-      origin: 'New York, NY',
-      destination: 'Miami, FL',
-      weight: 820.0,
-      description: 'Medical supplies and industrial equipment',
-      status: 'DELIVERED',
-      dispatchDate: new Date('2026-07-02T10:00:00Z'),
-      deliveryDate: new Date('2026-07-05T14:30:00Z'),
-    }
-  });
-
-  console.log('Created shipments.');
-
-  // Seed Invoices
-  // We'll store item details serialized as JSON in `notes` for Apex
-  const apexNotes = JSON.stringify([
-    {
-      title: "Cross-Country Freight",
-      details: "Chicago to Los Angeles - Logistics Route A-12",
-      quantity: 2,
-      rate: 8200.0,
-      amount: 16400.0,
-    },
-    {
-      title: "Terminal Handling Fees",
-      details: "Processing and priority loading surcharge",
-      quantity: 1,
-      rate: 1200.0,
-      amount: 1200.0,
-    },
-    {
-      title: "Insurance Premium",
-      details: "Comprehensive cargo protection plan",
-      quantity: 1,
-      rate: 800.0,
-      amount: 800.0,
-    }
+  const customers = await Promise.all([
+    prisma.customer.create({
+      data: {
+        name: 'John Doe',
+        contactNo: '+1 (555) 101-2001',
+        email: 'john.doe@techcorp.com',
+        address: '123 Market St, San Francisco, CA 94102',
+        company: 'TechCorp Inc.',
+      },
+    }),
+    prisma.customer.create({
+      data: {
+        name: 'Bill Kent',
+        contactNo: '+1 (555) 102-2002',
+        email: 'bill.kent@globaltrade.com',
+        address: '456 Commerce Blvd, Austin, TX 78701',
+        company: 'Global Trade Co.',
+      },
+    }),
+    prisma.customer.create({
+      data: {
+        name: 'Linda Chen',
+        contactNo: '+1 (555) 103-2003',
+        email: 'linda.chen@oceanfreight.com',
+        address: '789 Harbor Dr, Seattle, WA 98101',
+        company: 'Ocean Freight LLC',
+      },
+    }),
+    prisma.customer.create({
+      data: {
+        name: 'Marcus Johnson',
+        contactNo: '+1 (555) 104-2004',
+        email: 'marcus@midwestlogistics.com',
+        address: '321 Industrial Ave, Chicago, IL 60601',
+        company: 'Midwest Logistics',
+      },
+    }),
+    prisma.customer.create({
+      data: {
+        name: 'Elena Vasquez',
+        contactNo: '+1 (555) 105-2005',
+        email: 'elena@sunshinecargo.com',
+        address: '654 Sunshine Pkwy, Miami, FL 33101',
+        company: 'Sunshine Cargo',
+      },
+    }),
   ]);
 
-  await prisma.invoice.create({
-    data: {
-      id: 'inv_apex_001',
-      invoiceNo: 'INV-1043',
-      shipmentId: shipApex.id,
-      customerId: custApex.id,
-      totalAmount: 19763.00,
-      tax: 1363.00,
-      paymentStatus: 'PAID',
-      paymentMethod: 'Bank Transfer',
-      notes: apexNotes,
-      date: new Date('2026-07-04T11:00:00Z'),
-    }
+  const [route1, route2] = await Promise.all([
+    prisma.route.create({
+      data: {
+        routeId: 'US-W101',
+        startHub: 'Oakland',
+        endHub: 'Chicago',
+        estimatedDays: 2.5,
+      },
+    }),
+    prisma.route.create({
+      data: {
+        routeId: 'US-W102',
+        startHub: 'Chicago',
+        endHub: 'JFK Airport',
+        estimatedDays: 1.5,
+      },
+    }),
+  ]);
+
+  const [vehicle1, vehicle2] = await Promise.all([
+    prisma.vehicle.create({
+      data: {
+        vehicleId: 'T304',
+        type: 'Heavy Truck',
+        capacity: 22000,
+        status: 'Available',
+        description: 'Truck, Heavy Capacity (22,000 kg)',
+      },
+    }),
+    prisma.vehicle.create({
+      data: {
+        vehicleId: 'T310',
+        type: 'Truck',
+        capacity: 14000,
+        status: 'In Use',
+        description: 'Truck, Standard Capacity (14,000 kg)',
+      },
+    }),
+  ]);
+
+  const shipments = await Promise.all([
+    prisma.shipment.create({
+      data: {
+        shipmentCode: 'LOG-2401',
+        customerId: customers[0].id,
+        routeId: route1.id,
+        vehicleId: vehicle1.id,
+        senderName: 'John Doe',
+        senderContact: '+1 (555) 101-2001',
+        senderAddress: '123 Market St, San Francisco, CA 94102',
+        consigneeName: 'Apex Manufacturing Solutions',
+        consigneeContact: 'Sarah Chen',
+        consigneeAddress: '45 Main Campus, San Francisco, CA',
+        origin: 'Los Angeles, CA',
+        destination: 'San Francisco, CA',
+        weight: 250.5,
+        description: 'Electronics - Server components',
+        dimensions: '120 x 80 x 150',
+        shippingMethod: 'Express Air',
+        expectedDeliveryDate: new Date('2024-10-24T18:00:00Z'),
+        status: 'IN_TRANSIT',
+        dispatchDate: new Date('2024-10-20T06:00:00Z'),
+      },
+    }),
+    prisma.shipment.create({
+      data: {
+        shipmentCode: 'LOG-2402',
+        customerId: customers[3].id,
+        routeId: route2.id,
+        vehicleId: vehicle2.id,
+        senderName: 'Marcus Johnson',
+        senderContact: '+1 (555) 104-2004',
+        senderAddress: '321 Industrial Ave, Chicago, IL 60601',
+        consigneeName: 'Miami Distribution Center',
+        consigneeContact: 'Ops Desk',
+        consigneeAddress: '99 Port Lane, Miami, FL',
+        origin: 'New York, NY',
+        destination: 'Miami, FL',
+        weight: 1200,
+        description: 'Industrial machinery parts',
+        dimensions: '250 x 140 x 130',
+        shippingMethod: 'Road Freight',
+        expectedDeliveryDate: new Date('2024-10-22T14:30:00Z'),
+        status: 'DELIVERED',
+        dispatchDate: new Date('2024-10-15T07:00:00Z'),
+        deliveryDate: new Date('2024-10-22T14:30:00Z'),
+      },
+    }),
+    prisma.shipment.create({
+      data: {
+        shipmentCode: 'LOG-2398',
+        customerId: customers[1].id,
+        routeId: route1.id,
+        senderName: 'Bill Kent',
+        senderContact: '+1 (555) 102-2002',
+        senderAddress: '456 Commerce Blvd, Austin, TX 78701',
+        consigneeName: 'Austin Depot',
+        consigneeContact: 'Depot Desk',
+        consigneeAddress: '1000 Freight Ave, Austin, TX',
+        origin: 'Houston, TX',
+        destination: 'Austin, TX',
+        weight: 800.75,
+        description: 'Automotive parts - Rush',
+        dimensions: '180 x 120 x 110',
+        shippingMethod: 'Road Freight',
+        expectedDeliveryDate: new Date('2024-10-21T17:00:00Z'),
+        status: 'DELAYED',
+        dispatchDate: new Date('2024-10-19T05:00:00Z'),
+      },
+    }),
+    prisma.shipment.create({
+      data: {
+        shipmentCode: 'LOG-2405',
+        customerId: customers[2].id,
+        routeId: route2.id,
+        senderName: 'Linda Chen',
+        senderContact: '+1 (555) 103-2003',
+        senderAddress: '789 Harbor Dr, Seattle, WA 98101',
+        consigneeName: 'Portland Medical Supply',
+        consigneeContact: 'Receiving',
+        consigneeAddress: '33 Commerce Way, Portland, OR',
+        origin: 'Seattle, WA',
+        destination: 'Portland, OR',
+        weight: 450,
+        description: 'Medical supplies',
+        dimensions: '140 x 90 x 100',
+        shippingMethod: 'Express Air',
+        expectedDeliveryDate: new Date('2024-10-26T16:00:00Z'),
+        status: 'IN_TRANSIT',
+        dispatchDate: new Date('2024-10-22T08:00:00Z'),
+      },
+    }),
+    prisma.shipment.create({
+      data: {
+        shipmentCode: 'LOG-2410',
+        customerId: customers[4].id,
+        senderName: 'Elena Vasquez',
+        senderContact: '+1 (555) 105-2005',
+        senderAddress: '654 Sunshine Pkwy, Miami, FL 33101',
+        consigneeName: 'Detroit Fashion Hub',
+        consigneeContact: 'Receiving',
+        consigneeAddress: '777 Style Rd, Detroit, MI',
+        origin: 'Chicago, IL',
+        destination: 'Detroit, MI',
+        weight: 320.25,
+        description: 'Fashion merchandise',
+        dimensions: '100 x 70 x 90',
+        shippingMethod: 'Standard Ground',
+        expectedDeliveryDate: new Date('2024-10-29T10:00:00Z'),
+        status: 'PENDING',
+      },
+    }),
+    prisma.shipment.create({
+      data: {
+        shipmentCode: 'LOG-2395',
+        customerId: customers[0].id,
+        routeId: route1.id,
+        vehicleId: vehicle2.id,
+        senderName: 'John Doe',
+        senderContact: '+1 (555) 101-2001',
+        senderAddress: '123 Market St, San Francisco, CA 94102',
+        consigneeName: 'Washington Logistics Center',
+        consigneeContact: 'Receiving',
+        consigneeAddress: '88 Terminal Dr, Washington, DC',
+        origin: 'Boston, MA',
+        destination: 'Washington, DC',
+        weight: 175,
+        description: 'Office furniture',
+        dimensions: '160 x 120 x 100',
+        shippingMethod: 'Road Freight',
+        expectedDeliveryDate: new Date('2024-10-14T12:00:00Z'),
+        status: 'DELIVERED',
+        dispatchDate: new Date('2024-10-10T06:00:00Z'),
+        deliveryDate: new Date('2024-10-14T12:00:00Z'),
+      },
+    }),
+  ]);
+
+  await Promise.all([
+    prisma.trackingEvent.createMany({
+      data: [
+        { shipmentId: shipments[0].id, location: 'Los Angeles, CA', status: 'PICKED_UP', description: 'Cargo picked up from sender' },
+        { shipmentId: shipments[0].id, location: 'Los Angeles Hub', status: 'PROCESSING', description: 'Package processed at sorting facility' },
+        { shipmentId: shipments[0].id, location: 'Fresno, CA', status: 'IN_TRANSIT', description: 'In transit — en route to destination' },
+        { shipmentId: shipments[1].id, location: 'New York, NY', status: 'PICKED_UP', description: 'Cargo picked up from warehouse' },
+        { shipmentId: shipments[1].id, location: 'Miami, FL', status: 'DELIVERED', description: 'Successfully delivered to recipient' },
+        { shipmentId: shipments[2].id, location: 'Houston, TX', status: 'PICKED_UP', description: 'Cargo picked up' },
+        { shipmentId: shipments[2].id, location: 'San Antonio, TX', status: 'DELAYED', description: 'Delay due to vehicle breakdown — rescheduled' },
+      ],
+    }),
+    prisma.warehouseItem.createMany({
+      data: [
+        { shipmentId: shipments[0].id, warehouseLocation: 'Zone A - Rack 12', status: 'SAFE', barcodeQR: 'QR-LOG2401-WH' },
+        { shipmentId: shipments[2].id, warehouseLocation: 'Zone B - Rack 03', status: 'SAFE', barcodeQR: 'QR-LOG2398-WH' },
+        { shipmentId: shipments[3].id, warehouseLocation: 'Zone C - Rack 07', status: 'DAMAGED', barcodeQR: 'QR-LOG2405-WH' },
+      ],
+    }),
+    prisma.invoice.createMany({
+      data: [
+        { invoiceNo: 'INV-2024-001', shipmentId: shipments[0].id, customerId: customers[0].id, totalAmount: 1850, tax: 185, paymentStatus: 'PENDING' },
+        { invoiceNo: 'INV-2024-002', shipmentId: shipments[1].id, customerId: customers[3].id, totalAmount: 4200, tax: 420, paymentStatus: 'PAID', paymentMethod: 'Bank Transfer' },
+        { invoiceNo: 'INV-2024-003', shipmentId: shipments[2].id, customerId: customers[1].id, totalAmount: 2900, tax: 290, paymentStatus: 'OVERDUE' },
+        { invoiceNo: 'INV-2024-004', shipmentId: shipments[5].id, customerId: customers[0].id, totalAmount: 980, tax: 98, paymentStatus: 'PAID', paymentMethod: 'Cash' },
+      ],
+    }),
+  ]);
+
+  await prisma.shipment.update({
+    where: { id: shipments[2].id },
+    data: { archivedAt: new Date('2023-12-14T00:00:00Z') },
   });
 
-  await prisma.invoice.create({
-    data: {
-      id: 'inv_global_001',
-      invoiceNo: 'INV-1041',
-      shipmentId: shipGlobal.id,
-      customerId: custGlobal.id,
-      totalAmount: 9800.00,
-      tax: 726.00,
-      paymentStatus: 'PENDING',
-      paymentMethod: null,
-      notes: 'Standard 30-day term payment.',
-      date: new Date('2026-07-05T14:00:00Z'),
-    }
-  });
-
-  console.log('Created invoices.');
-
-  // Seed Payments (against the PAID Apex invoice)
-  await prisma.payment.create({
-    data: {
-      id: 'pay_apex_001',
-      paymentNo: 'PAY-1001',
-      invoiceId: 'inv_apex_001',
-      amount: 19763.00,
-      method: 'BANK_TRANSFER',
-      status: 'COMPLETED',
-      reference: 'TXN-88213422',
-      notes: 'Full settlement received.',
-      paidBy: 'Apex Manufacturing',
-      paymentDate: new Date('2026-07-06T09:15:00Z'),
-    }
-  });
-
-  // Partial payment against the PENDING Global Freight invoice
-  await prisma.payment.create({
-    data: {
-      id: 'pay_global_001',
-      paymentNo: 'PAY-1002',
-      invoiceId: 'inv_global_001',
-      amount: 4000.00,
-      method: 'CREDIT_CARD',
-      status: 'COMPLETED',
-      reference: 'TXN-88213980',
-      notes: 'Partial advance payment.',
-      paidBy: 'Global Freight Co.',
-      paymentDate: new Date('2026-07-07T13:40:00Z'),
-    }
-  });
-
-  // Reflect the partial payment on the invoice's payment status
-  await prisma.invoice.update({
-    where: { id: 'inv_global_001' },
-    data: { paymentStatus: 'PARTIALLY_PAID', paymentMethod: 'CREDIT_CARD' },
-  });
-
-  console.log('Created payments.');
-
-  // Seed Expenses
-  const sampleExpenses = [
-    {
-      id: 'exp_001',
-      expenseNo: 'EXP-1001',
-      category: 'FUEL',
-      title: 'Fleet diesel refill',
-      description: 'Fuel top-up for cross-country freight trucks.',
-      amount: 3200.00,
-      status: 'APPROVED',
-      paymentMethod: 'BANK_TRANSFER',
-      vendor: 'Shell Fleet Services',
-      incurredBy: 'Operations Manager',
-      expenseDate: new Date('2026-07-02T08:00:00Z'),
-    },
-    {
-      id: 'exp_002',
-      expenseNo: 'EXP-1002',
-      category: 'MAINTENANCE',
-      title: 'Warehouse forklift servicing',
-      description: 'Routine maintenance for warehouse equipment.',
-      amount: 850.00,
-      status: 'APPROVED',
-      paymentMethod: 'CASH',
-      vendor: 'Toyota Material Handling',
-      incurredBy: 'Warehouse Operator',
-      expenseDate: new Date('2026-07-03T10:30:00Z'),
-    },
-    {
-      id: 'exp_003',
-      expenseNo: 'EXP-1003',
-      category: 'OFFICE',
-      title: 'Office supplies restock',
-      description: 'Stationery and printer consumables.',
-      amount: 240.50,
-      status: 'PENDING',
-      paymentMethod: null,
-      vendor: 'Staples Inc.',
-      incurredBy: 'Finance Executive',
-      expenseDate: new Date('2026-07-06T15:00:00Z'),
-    },
-    {
-      id: 'exp_004',
-      expenseNo: 'EXP-1004',
-      category: 'UTILITIES',
-      title: 'Warehouse electricity bill',
-      description: 'Monthly electricity charges for main warehouse.',
-      amount: 1120.75,
-      status: 'APPROVED',
-      paymentMethod: 'BANK_TRANSFER',
-      vendor: 'City Power & Light',
-      incurredBy: 'Finance Executive',
-      expenseDate: new Date('2026-07-08T09:00:00Z'),
-    },
-  ];
-
-  for (const e of sampleExpenses) {
-    await prisma.expense.create({ data: e });
-  }
-
-  console.log('Created expenses.');
   console.log('Seeding completed successfully.');
 }
 
@@ -350,4 +340,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-
