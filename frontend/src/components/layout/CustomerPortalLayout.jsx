@@ -107,8 +107,12 @@ export default function CustomerPortalLayout({ children }) {
               </span>
             </button>
 
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800 text-sm font-bold text-white uppercase" title={`${user?.name || ''} (${user?.role || ''})`}>
-              {initials}
+            <div className="flex h-10 w-10 items-center justify-center rounded-full overflow-hidden bg-slate-800 text-sm font-bold text-white uppercase" title={`${user?.name || ''} (${user?.role || ''})`}>
+              {user?.avatar ? (
+                <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                initials
+              )}
             </div>
           </div>
         </div>

@@ -7,6 +7,9 @@ import { PrismaClient } from '@prisma/client';
 import authRoutes from './src/routes/authRoutes.js';
 import userRoutes from './src/routes/userRoutes.js';
 import invoiceRoutes from './src/routes/invoiceRoutes.js';
+import paymentRoutes from './src/routes/paymentRoutes.js';
+import expenseRoutes from './src/routes/expenseRoutes.js';
+import financeRoutes from './src/routes/financeRoutes.js';
 
 
 // Load environment variables
@@ -37,7 +40,6 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/invoices', invoiceRoutes);
 
 // Health check route
 app.get('/api/health', async (req, res) => {

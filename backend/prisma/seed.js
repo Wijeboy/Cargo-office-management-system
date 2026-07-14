@@ -7,6 +7,8 @@ async function main() {
   console.log('Seeding database...');
   
   // Clear existing records to avoid unique constraint violations
+  await prisma.payment.deleteMany({});
+  await prisma.expense.deleteMany({});
   await prisma.invoice.deleteMany({});
   await prisma.shipment.deleteMany({});
   await prisma.customer.deleteMany({});
@@ -179,6 +181,108 @@ async function main() {
   });
 
   console.log('Created invoices.');
+
+  // Seed Payments (against the PAID Apex invoice)
+  await prisma.payment.create({
+    data: {
+      id: 'pay_apex_001',
+      paymentNo: 'PAY-1001',
+      invoiceId: 'inv_apex_001',
+      amount: 19763.00,
+      method: 'BANK_TRANSFER',
+      status: 'COMPLETED',
+      reference: 'TXN-88213422',
+      notes: 'Full settlement received.',
+      paidBy: 'Apex Manufacturing',
+      paymentDate: new Date('2026-07-06T09:15:00Z'),
+    }
+  });
+
+  // Partial payment against the PENDING Global Freight invoice
+  await prisma.payment.create({
+    data: {
+      id: 'pay_global_001',
+      paymentNo: 'PAY-1002',
+      invoiceId: 'inv_global_001',
+      amount: 4000.00,
+      method: 'CREDIT_CARD',
+      status: 'COMPLETED',
+      reference: 'TXN-88213980',
+      notes: 'Partial advance payment.',
+      paidBy: 'Global Freight Co.',
+      paymentDate: new Date('2026-07-07T13:40:00Z'),
+    }
+  });
+
+  // Reflect the partial payment on the invoice's payment status
+  await prisma.invoice.update({
+    where: { id: 'inv_global_001' },
+    data: { paymentStatus: 'PARTIALLY_PAID', paymentMethod: 'CREDIT_CARD' },
+  });
+
+  console.log('Created payments.');
+
+  // Seed Expenses
+  const sampleExpenses = [
+    {
+      id: 'exp_001',
+      expenseNo: 'EXP-1001',
+      category: 'FUEL',
+      title: 'Fleet diesel refill',
+      description: 'Fuel top-up for cross-country freight trucks.',
+      amount: 3200.00,
+      status: 'APPROVED',
+      paymentMethod: 'BANK_TRANSFER',
+      vendor: 'Shell Fleet Services',
+      incurredBy: 'Operations Manager',
+      expenseDate: new Date('2026-07-02T08:00:00Z'),
+    },
+    {
+      id: 'exp_002',
+      expenseNo: 'EXP-1002',
+      category: 'MAINTENANCE',
+      title: 'Warehouse forklift servicing',
+      description: 'Routine maintenance for warehouse equipment.',
+      amount: 850.00,
+      status: 'APPROVED',
+      paymentMethod: 'CASH',
+      vendor: 'Toyota Material Handling',
+      incurredBy: 'Warehouse Operator',
+      expenseDate: new Date('2026-07-03T10:30:00Z'),
+    },
+    {
+      id: 'exp_003',
+      expenseNo: 'EXP-1003',
+      category: 'OFFICE',
+      title: 'Office supplies restock',
+      description: 'Stationery and printer consumables.',
+      amount: 240.50,
+      status: 'PENDING',
+      paymentMethod: null,
+      vendor: 'Staples Inc.',
+      incurredBy: 'Finance Executive',
+      expenseDate: new Date('2026-07-06T15:00:00Z'),
+    },
+    {
+      id: 'exp_004',
+      expenseNo: 'EXP-1004',
+      category: 'UTILITIES',
+      title: 'Warehouse electricity bill',
+      description: 'Monthly electricity charges for main warehouse.',
+      amount: 1120.75,
+      status: 'APPROVED',
+      paymentMethod: 'BANK_TRANSFER',
+      vendor: 'City Power & Light',
+      incurredBy: 'Finance Executive',
+      expenseDate: new Date('2026-07-08T09:00:00Z'),
+    },
+  ];
+
+  for (const e of sampleExpenses) {
+    await prisma.expense.create({ data: e });
+  }
+
+  console.log('Created expenses.');
   console.log('Seeding completed successfully.');
 }
 

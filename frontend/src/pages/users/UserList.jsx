@@ -39,6 +39,7 @@ export default function UserList() {
     role: 'OPERATIONS',
     department: '',
     phone: '',
+    avatar: '',
     status: true,
   });
 
@@ -84,6 +85,7 @@ export default function UserList() {
       role: 'OPERATIONS',
       department: '',
       phone: '',
+      avatar: '',
       status: true,
     });
     setFormError('');
@@ -100,6 +102,7 @@ export default function UserList() {
       role: user.role || 'OPERATIONS',
       department: user.department || '',
       phone: user.phone || '',
+      avatar: user.avatar || '',
       status: user.status !== undefined ? user.status : true,
     });
     setFormError('');
@@ -231,8 +234,12 @@ export default function UserList() {
                   <tr key={u.id}>
                     <td>
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-primary-container flex items-center justify-center text-xs font-bold text-on-primary-container flex-shrink-0">
-                          {u.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U'}
+                        <div className="w-9 h-9 rounded-full overflow-hidden bg-primary-container flex items-center justify-center text-xs font-bold text-on-primary-container flex-shrink-0">
+                          {u.avatar ? (
+                            <img src={u.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                          ) : (
+                            u.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U'
+                          )}
                         </div>
                         <span className="font-semibold">{u.name}</span>
                       </div>
@@ -283,6 +290,42 @@ export default function UserList() {
                   {formError}
                 </div>
               )}
+
+              {/* Photo selector inside modal */}
+              <div className="flex items-center gap-4 py-2 border-b border-outline-variant/30">
+                <div className="w-16 h-16 rounded-full overflow-hidden bg-primary-container flex items-center justify-center text-xl font-bold text-on-primary-container flex-shrink-0">
+                  {form.avatar ? (
+                    <img src={form.avatar} alt="User Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    form.name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U'
+                  )}
+                </div>
+                <div>
+                  <button type="button" onClick={() => document.getElementById('modal-avatar-input').click()} className="btn-secondary text-xs py-1.5 px-3">
+                    Change Photo
+                  </button>
+                  <p className="text-[10px] text-on-surface-variant mt-1">Accepts PNG/JPG under 10MB.</p>
+                  <input
+                    type="file"
+                    id="modal-avatar-input"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files[0];
+                      if (!file) return;
+                      if (file.size > 10 * 1024 * 1024) {
+                        alert('Image size should be less than 10MB.');
+                        return;
+                      }
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        setForm(p => ({ ...p, avatar: reader.result }));
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                </div>
+              </div>
 
               <div>
                 <label className="input-label" htmlFor="m-name">Full Name</label>

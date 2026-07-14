@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Download, Plus, Search, Calendar } from "lucide-react";
+import { Download, Plus, Search, Calendar, Printer } from "lucide-react";
 
 const statusStyles = {
   PAID: "bg-emerald-50 text-emerald-600",
@@ -174,6 +174,7 @@ export default function InvoiceManagement({ onNavigate }) {
                   <th className="px-4 py-3 font-medium text-right">Tax</th>
                   <th className="px-4 py-3 font-medium text-right">Total</th>
                   <th className="px-4 py-3 font-medium text-right">Status</th>
+                  <th className="px-4 py-3 font-medium text-right">Receipt</th>
                 </tr>
               </thead>
               <tbody>
@@ -189,7 +190,7 @@ export default function InvoiceManagement({ onNavigate }) {
                     >
                       <td className="px-4 py-3.5">
                         <button
-                          onClick={() => onNavigate("print-receipt", inv)}
+                          onClick={() => onNavigate("invoice-detail", { invoice: inv })}
                           className="text-indigo-600 font-semibold hover:underline"
                         >
                           {inv.invoiceNo}
@@ -222,6 +223,17 @@ export default function InvoiceManagement({ onNavigate }) {
                         >
                           {formattedStatus}
                         </span>
+                      </td>
+                      <td className="px-4 py-3.5 text-right">
+                        {status === 'PAID' && (
+                          <button
+                            onClick={() => onNavigate("print-receipt", { invoice: inv })}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                            Receipt
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );

@@ -41,6 +41,7 @@ import Footer from "./pages/finance/Footer";
 import FinanceDashboard from "./pages/finance/FinanceDashboard";
 import InvoiceManagement from "./pages/finance/InvoiceManagement";
 import GenerateInvoice from "./pages/finance/GenerateInvoice";
+import InvoiceDetail from "./pages/finance/InvoiceDetail";
 import PaymentManagement from "./pages/finance/PaymentManagement";
 import ExpenseManagement from "./pages/finance/ExpenseManagement";
 import AddExpense from "./pages/finance/AddExpense";
@@ -113,10 +114,18 @@ function RootRedirect() {
 function FinancePortal() {
   const [page, setPage] = useState("dashboard");
   const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [selectedPayment, setSelectedPayment] = useState(null);
 
-  const navigateTo = (nextPage, invoiceData = null) => {
-    if (invoiceData) {
-      setSelectedInvoice(invoiceData);
+  const navigateTo = (nextPage, payload = null) => {
+    if (payload?.invoice) {
+      setSelectedInvoice(payload.invoice);
+    } else if (payload && (payload.id || payload.invoiceNo)) {
+      setSelectedInvoice(payload);
+    }
+    if (payload?.payment) {
+      setSelectedPayment(payload.payment);
+    } else if (payload?.selectedPayment) {
+      setSelectedPayment(payload.selectedPayment);
     }
     setPage(nextPage);
   };
@@ -127,8 +136,10 @@ function FinancePortal() {
         return <InvoiceManagement onNavigate={navigateTo} />;
       case "invoice-form":
         return <GenerateInvoice onNavigate={navigateTo} />;
+      case "invoice-detail":
+        return <InvoiceDetail invoice={selectedInvoice} selectedPayment={selectedPayment} onNavigate={navigateTo} />;
       case "print-receipt":
-        return <PrintReceipt invoice={selectedInvoice} onNavigate={navigateTo} />;
+        return <PrintReceipt invoice={selectedInvoice} payment={selectedPayment} onNavigate={navigateTo} />;
       case "payments":
         return <PaymentManagement onNavigate={navigateTo} />;
       case "expenses":

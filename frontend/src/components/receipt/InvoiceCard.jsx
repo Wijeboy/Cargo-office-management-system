@@ -1,29 +1,30 @@
 import React from 'react';
 
-const InvoiceCard = ({ invoice }) => {
+const InvoiceCard = ({ invoice, receipt }) => {
+  const source = receipt || invoice || {};
   // Extract and format customer info from database or fallback to mock
-  const clientName = invoice?.customer?.name || invoice?.clientName || invoice?.client || 'Apex Manufacturing';
-  const customerEmail = invoice?.customer?.email || 'contact@apexmf.com';
-  const customerPhone = invoice?.customer?.contactNo || '';
-  const customerAddress = invoice?.customer?.address || '451 Industrial Parkway, Detroit, MI 48201';
-  const customerCompany = invoice?.customer?.company || 'Apex Manufacturing Ltd.';
+  const clientName = source?.customer?.name || source?.clientName || source?.client || 'Apex Manufacturing';
+  const customerEmail = source?.customer?.email || 'contact@apexmf.com';
+  const customerPhone = source?.customer?.contactNo || '';
+  const customerAddress = source?.customer?.address || '451 Industrial Parkway, Detroit, MI 48201';
+  const customerCompany = source?.customer?.company || 'Apex Manufacturing Ltd.';
 
   // Map status from Prisma (e.g., 'PAID', 'PENDING', 'OVERDUE') or fallback
-  const rawStatus = invoice?.paymentStatus || invoice?.status || 'PAID';
+  const rawStatus = source?.paymentStatus || source?.status || 'PAID';
   // Capitalize nicely
   const status = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase();
 
   // Format dates
-  const issueDate = invoice?.date || invoice?.issueDate
-    ? new Date(invoice.date || invoice.issueDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+  const issueDate = source?.invoiceDate || source?.date || source?.issueDate
+    ? new Date(source.invoiceDate || source.date || source.issueDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
     : 'Oct 24, 2023';
 
   const getDueDate = () => {
-    if (invoice?.dueDate) {
-      return new Date(invoice.dueDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    if (source?.dueDate) {
+      return new Date(source.dueDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
     }
     // Default to issueDate + 30 days if no due date specified
-    const baseDate = invoice?.date || invoice?.issueDate;
+    const baseDate = source?.invoiceDate || source?.date || source?.issueDate;
     if (baseDate) {
       const d = new Date(baseDate);
       d.setDate(d.getDate() + 30);
@@ -34,31 +35,41 @@ const InvoiceCard = ({ invoice }) => {
   const dueDate = getDueDate();
 
   // Calculate subtotals
-  const tax = invoice?.tax ?? 0;
-  const total = invoice?.totalAmount ?? invoice?.total ?? 0;
+  const tax = source?.tax ?? 0;
+  const total = source?.totalAmount ?? source?.total ?? 0;
   const subtotal = total - tax;
-  const invoiceNo = invoice?.invoiceNo || 'INV-1043';
+  const calculatedTaxRate = subtotal > 0 ? Math.round((tax / subtotal) * 100) : 8;
+  const invoiceNo = source?.invoiceNo || 'N/A';
 
-  // Get line items from database invoice notes or fallback
-  let receiptItems = [];
-  if (invoice?.notes) {
+  let receiptItems = source?.items || [];
+  let customNotes = '';
+  if (source?.notes) {
     try {
-      const parsed = JSON.parse(invoice.notes);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        receiptItems = parsed;
+      const parsed = JSON.parse(source.notes);
+      if (parsed && typeof parsed === 'object') {
+        if (Array.isArray(parsed.items)) {
+          receiptItems = parsed.items;
+          customNotes = parsed.customNotes || '';
+        } else if (Array.isArray(parsed)) {
+          // Backward compatibility with legacy direct array structure
+          receiptItems = parsed;
+        }
+      } else {
+        customNotes = String(source.notes);
       }
     } catch (e) {
       // notes is plain text, not JSON
+      customNotes = source.notes;
     }
   }
 
   // If no items extracted, generate a default one based on the shipment details
   if (receiptItems.length === 0) {
-    const shipmentCode = invoice?.shipment?.shipmentCode || 'LOG-XXXX';
-    const origin = invoice?.shipment?.origin || 'Origin';
-    const destination = invoice?.shipment?.destination || 'Destination';
-    const weight = invoice?.shipment?.weight || 0;
-    const description = invoice?.shipment?.description || 'Cargo freight transport';
+    const shipmentCode = source?.shipment?.shipmentCode || 'LOG-XXXX';
+    const origin = source?.shipment?.origin || 'Origin';
+    const destination = source?.shipment?.destination || 'Destination';
+    const weight = source?.shipment?.weight || 0;
+    const description = source?.shipment?.description || 'Cargo freight transport';
 
     receiptItems = [
       {
@@ -129,10 +140,10 @@ const InvoiceCard = ({ invoice }) => {
             <span className="text-gray-400">Due Date:</span>{" "}
             <span className="font-semibold text-gray-700">{dueDate}</span>
           </p>
-          {invoice?.paymentMethod && (
+          {source?.paymentMethod && (
             <p className="text-xs text-gray-500 mt-0.5">
               <span className="text-gray-400">Payment:</span>{" "}
-              <span className="font-semibold text-gray-700">{invoice.paymentMethod}</span>
+              <span className="font-semibold text-gray-700">{source.paymentMethod}</span>
             </p>
           )}
         </div>
@@ -183,9 +194,9 @@ const InvoiceCard = ({ invoice }) => {
           <h4 className="text-xs font-bold text-gray-500 tracking-wider uppercase mb-1">
             NOTE
           </h4>
-          {invoice?.notes && !invoice.notes.startsWith('[') ? (
+          {customNotes ? (
             <p className="text-xs text-gray-500 leading-relaxed italic mb-2">
-              "{invoice.notes}"
+              "{customNotes}"
             </p>
           ) : null}
           <p className="text-xs text-gray-500 leading-relaxed">
@@ -193,6 +204,15 @@ const InvoiceCard = ({ invoice }) => {
             <br />
             Thank you for your continued partnership with LogiFlow.
           </p>
+          {source?.companyInfo && (
+            <div className="mt-4 text-xs text-gray-500 space-y-0.5">
+              <p className="font-semibold text-gray-700">{source.companyInfo.name}</p>
+              <p>{source.companyInfo.tagline}</p>
+              <p>{source.companyInfo.address}</p>
+              <p>{source.companyInfo.phone}</p>
+              <p>{source.companyInfo.email}</p>
+            </div>
+          )}
         </div>
         <div className="text-sm space-y-2">
           <div className="flex justify-between text-gray-600">
@@ -200,7 +220,7 @@ const InvoiceCard = ({ invoice }) => {
             <span className="font-bold text-gray-900">${subtotal.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
           </div>
           <div className="flex justify-between text-gray-600 border-b border-gray-300 pb-2">
-            <span>Tax ({invoice?.taxRate !== undefined ? invoice.taxRate : '8'}%)</span>
+            <span>Tax ({calculatedTaxRate}%)</span>
             <span className="font-bold text-gray-900">${tax.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
           </div>
           <div className="flex justify-between items-center pt-1">
@@ -209,6 +229,24 @@ const InvoiceCard = ({ invoice }) => {
             </span>
             <span className="text-lg font-bold text-gray-900">${total.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
           </div>
+          {source?.amountPaid !== undefined && (
+            <div className="flex justify-between text-gray-600 pt-2">
+              <span>Amount Paid</span>
+              <span className="font-bold text-gray-900">${Number(source.amountPaid).toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+            </div>
+          )}
+          {source?.balanceDue !== undefined && (
+            <div className="flex justify-between text-gray-600">
+              <span>Balance Due</span>
+              <span className="font-bold text-gray-900">${Number(source.balanceDue).toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+            </div>
+          )}
+          {source?.change !== undefined && source.change > 0 && (
+            <div className="flex justify-between text-gray-600">
+              <span>Change</span>
+              <span className="font-bold text-gray-900">${Number(source.change).toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -1,6 +1,14 @@
 import express from 'express';
-import { getAllInvoices, getInvoiceById, getInvoiceByNo } from '../controllers/invoiceController.js';
-import { authenticateToken } from '../middleware/auth.js';
+import {
+  getAllInvoices,
+  getInvoiceById,
+  getInvoiceByNo,
+  createInvoice,
+  updateInvoice,
+  deleteInvoice,
+  getInvoiceReceipt,
+} from '../controllers/invoiceController.js';
+import { authenticateToken, requireRoles } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -8,7 +16,13 @@ const router = express.Router();
 router.use(authenticateToken);
 
 router.get('/', getAllInvoices);
-router.get('/:id', getInvoiceById);
+router.get('/:id/receipt', getInvoiceReceipt);
 router.get('/no/:invoiceNo', getInvoiceByNo);
+router.get('/:id', getInvoiceById);
+
+// Only Admin and Finance can create/update/delete invoices
+router.post('/', requireRoles(['ADMIN', 'FINANCE']), createInvoice);
+router.put('/:id', requireRoles(['ADMIN', 'FINANCE']), updateInvoice);
+router.delete('/:id', requireRoles(['ADMIN', 'FINANCE']), deleteInvoice);
 
 export default router;
