@@ -41,10 +41,21 @@ export default function GenerateInvoice({ onNavigate }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const invoice = {
+      id: `tmp-${Date.now()}`,
+      invoiceNo: invoiceNumber,
+      paymentStatus: "PENDING",
+      date: issueDate,
+      dueDate,
+      notes,
+      tax,
+      totalAmount: total,
+      subtotal,
+    };
     // Show premium toast notification
     toast.success(`Invoice ${invoiceNumber} for ${client || "Client"} generated successfully!`);
-    // Navigate directly to print-receipt subpage
-    onNavigate("print-receipt", invoiceNumber);
+    // Navigate to invoice detail subpage so payment is recorded before receipt printing
+    onNavigate("invoice-detail", { invoice });
   };
 
   return (

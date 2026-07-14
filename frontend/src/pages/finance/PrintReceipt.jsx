@@ -5,31 +5,23 @@ import NextSteps from '../../components/receipt/NextSteps';
 import AuditSummary from '../../components/receipt/AuditSummary';
 import SecureLedgerCard from '../../components/receipt/SecureLedgerCard';
 
-const PrintReceipt = ({ invoice: initialInvoice, onNavigate }) => {
-  const [invoice, setInvoice] = useState(null);
+const PrintReceipt = ({ invoice: initialInvoice, payment: initialPayment, onNavigate }) => {
+  const [receipt, setReceipt] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchInvoice = async () => {
+    const fetchReceipt = async () => {
       let searchKey = null;
-      let isNo = false;
 
       if (typeof initialInvoice === 'string') {
         searchKey = initialInvoice;
-        isNo = initialInvoice.startsWith('INV-');
       } else if (initialInvoice && typeof initialInvoice === 'object') {
-        if (initialInvoice.id) {
-          searchKey = initialInvoice.id;
-          isNo = false;
-        } else if (initialInvoice.invoiceNo) {
-          searchKey = initialInvoice.invoiceNo;
-          isNo = true;
-        }
+        searchKey = initialInvoice.id || initialInvoice.invoiceNo;
       }
 
       if (!searchKey) {
-        setInvoice(initialInvoice || {});
+        setReceipt(initialInvoice || {});
         setLoading(false);
         return;
       }
@@ -37,33 +29,29 @@ const PrintReceipt = ({ invoice: initialInvoice, onNavigate }) => {
       try {
         setLoading(true);
         const token = localStorage.getItem('lf_token');
-        const url = isNo 
-          ? `http://localhost:5001/api/invoices/no/${searchKey}`
-          : `http://localhost:5001/api/invoices/${searchKey}`;
-          
+        const url = `http://localhost:5001/api/invoices/${searchKey}/receipt`;
         const response = await fetch(url, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
         });
 
+        const data = await response.json();
         if (!response.ok) {
-          throw new Error('Failed to load invoice details from database.');
+          throw new Error(data?.message || 'Receipt is only available for paid invoices.');
         }
 
-        const data = await response.json();
-        setInvoice(data.invoice);
+        setReceipt(data.receipt);
       } catch (err) {
         console.error(err);
         setError(err.message);
-        // Fallback to initialInvoice if API call fails
-        setInvoice(initialInvoice && typeof initialInvoice === 'object' ? initialInvoice : {});
+        setReceipt(null);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchInvoice();
+    fetchReceipt();
   }, [initialInvoice]);
 
   if (loading) {
@@ -77,22 +65,22 @@ const PrintReceipt = ({ invoice: initialInvoice, onNavigate }) => {
     );
   }
 
-  if (error && !invoice?.invoiceNo) {
+  if (error && !receipt?.invoiceNo && !receipt?.receiptNo) {
     return (
       <div className="max-w-md mx-auto mt-20 p-6 bg-white border border-gray-200 rounded-2xl shadow-sm text-center">
         <h2 className="text-lg font-bold text-rose-600 mb-2">Error Loading Invoice</h2>
         <p className="text-sm text-gray-500 mb-6">{error}</p>
         <button
           className="bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-800 transition"
-          onClick={() => onNavigate('invoices')}
+          onClick={() => onNavigate('invoice-detail', { invoice: initialInvoice, payment: initialPayment })}
         >
-          Back to Invoices
+          Back to Invoice
         </button>
       </div>
     );
   }
 
-  const invoiceData = invoice || {};
+  const receiptData = receipt || {};
 
   return (
     <div className="max-w-6xl mx-auto p-6 bg-gray-50 min-h-screen font-sans text-gray-800">
@@ -123,14 +111,14 @@ const PrintReceipt = ({ invoice: initialInvoice, onNavigate }) => {
 
       {/* Top Banner (hidden during printing) */}
       <div className="no-print">
-        <SuccessBanner invoiceNumber={invoiceData.invoiceNo || "INV-1043"} />
+        <SuccessBanner receiptNo={receiptData.receiptNo || "RCPT-0000"} onPrint={() => window.print()} />
       </div>
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
         {/* Left Column: Invoice Details (Printable) */}
         <div className="lg:col-span-2 print-area">
-          <InvoiceCard invoice={invoiceData} />
+          <InvoiceCard receipt={receiptData} invoice={receiptData.invoice || initialInvoice} />
         </div>
 
         {/* Right Column: Actions & Sidebar Info (hidden during printing) */}
@@ -146,9 +134,9 @@ const PrintReceipt = ({ invoice: initialInvoice, onNavigate }) => {
           </button>
           <button
             className="w-full bg-[#0b192c] text-white px-5 py-3 rounded-xl font-medium text-sm hover:bg-slate-800 transition"
-            onClick={() => onNavigate('invoices')}
+            onClick={() => onNavigate('invoice-detail', { invoice: initialInvoice, payment: initialPayment })}
           >
-            Back to invoices
+            Back to Invoice
           </button>
         </div>
       </div>

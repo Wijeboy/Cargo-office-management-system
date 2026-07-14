@@ -1,7 +1,7 @@
 import React from "react";
-import { CheckCircle2, Download, Printer } from "lucide-react";
+import { CheckCircle2, Printer } from "lucide-react";
 
-const SuccessBanner = ({ invoiceNumber }) => {
+const SuccessBanner = ({ receiptNo, onPrint }) => {
   return (
     <div className="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col md:flex-row md:items-center md:justify-between shadow-sm gap-4">
       <div className="flex items-start gap-4">
@@ -10,22 +10,17 @@ const SuccessBanner = ({ invoiceNumber }) => {
         </div>
         <div>
           <h1 className="text-xl font-bold text-gray-900">
-            Invoice Saved Successfully!
+            Payment Recorded Successfully!
           </h1>
           <p className="text-sm text-gray-500 mt-1 max-w-xl">
-            Confirmation for {invoiceNumber}. All logistics fees and tax
-            calculations have been finalized and recorded in the financial
-            ledger.
+            Receipt {receiptNo} is ready for printing.
           </p>
         </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
-        <button className="flex items-center justify-center gap-2 bg-[#0b192c] text-white px-5 py-2.5 rounded-xl font-medium text-sm hover:bg-slate-800 transition">
-          <Download size={16} /> Download PDF
-        </button>
         <button
-          onClick={() => window.print()}
+          onClick={onPrint || (() => window.print())}
           className="flex items-center justify-center gap-2 bg-[#e2ecf9] text-[#1e3a8a] px-5 py-2.5 rounded-xl font-medium text-sm hover:bg-blue-100 transition"
         >
           <Printer size={16} /> Print Receipt

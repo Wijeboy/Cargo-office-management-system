@@ -26,6 +26,134 @@ function round2(num) {
   return Math.round((num + Number.EPSILON) * 100) / 100;
 }
 
+function parseReceiptItems(notes, shipment, subtotal) {
+  let items = [];
+
+  if (notes) {
+    try {
+      const parsed = JSON.parse(notes);
+      if (Array.isArray(parsed)) {
+        items = parsed;
+      } else if (parsed && typeof parsed === 'object' && Array.isArray(parsed.items)) {
+        items = parsed.items;
+      }
+    } catch {
+      items = [];
+    }
+  }
+
+  if (items.length > 0) {
+    return items.map((item, index) => ({
+      id: item.id || `${index}`,
+      description: item.description || item.title || `Item ${index + 1}`,
+      quantity: Number(item.quantity ?? item.qty ?? 1),
+      rate: round2(Number(item.rate ?? 0)),
+      amount: round2(Number(item.amount ?? (Number(item.quantity ?? item.qty ?? 1) * Number(item.rate ?? 0)))),
+    }));
+  }
+
+  const shipmentCode = shipment?.shipmentCode || 'LOG-XXXX';
+  return [
+    {
+      id: 'shipment-service',
+      description: `Freight Shipment Delivery (${shipmentCode})`,
+      quantity: 1,
+      rate: round2(subtotal),
+      amount: round2(subtotal),
+    },
+  ];
+}
+
+/**
+ * Get a receipt for a paid invoice.
+ */
+export async function getInvoiceReceipt(req, res) {
+  const { id } = req.params;
+
+  try {
+    const invoice = await prisma.invoice.findUnique({
+      where: { id },
+      include: {
+        customer: true,
+        shipment: true,
+        payments: {
+          orderBy: { paymentDate: 'desc' },
+        },
+      },
+    });
+
+    if (!invoice) {
+      return res.status(404).json({
+        status: 404,
+        error: 'Not Found',
+        message: `Invoice with ID ${id} not found.`,
+      });
+    }
+
+    if (invoice.paymentStatus !== 'PAID') {
+      return res.status(403).json({
+        status: 403,
+        error: 'Forbidden',
+        message: 'Receipt is only available for paid invoices.',
+      });
+    }
+
+    const latestPayment = invoice.payments[invoice.payments.length - 1];
+    const subtotal = round2(invoice.totalAmount - (invoice.tax || 0));
+    const amountPaid = round2(invoice.payments.filter((payment) => payment.status === 'COMPLETED').reduce((sum, payment) => sum + payment.amount, 0));
+    const balanceDue = round2(Math.max(invoice.totalAmount - amountPaid, 0));
+    const change = round2(Math.max(amountPaid - invoice.totalAmount, 0));
+
+    const receipt = {
+      receiptNo: latestPayment?.paymentNo ? `RCPT-${latestPayment.paymentNo.replace(/^PAY-/, '')}` : `RCPT-${invoice.invoiceNo.replace(/^INV-/, '')}`,
+      invoiceNo: invoice.invoiceNo,
+      invoiceDate: invoice.date,
+      paymentDate: latestPayment?.paymentDate || invoice.updatedAt || invoice.date,
+      paymentMethod: latestPayment?.method || invoice.paymentMethod || 'N/A',
+      paymentReference: latestPayment?.reference || null,
+      cashier: latestPayment?.paidBy || 'System',
+      customer: invoice.customer
+        ? {
+            id: invoice.customer.id,
+            name: invoice.customer.name,
+            email: invoice.customer.email,
+            contactNo: invoice.customer.contactNo,
+            company: invoice.customer.company,
+            address: invoice.customer.address,
+          }
+        : null,
+      items: parseReceiptItems(invoice.notes, invoice.shipment, subtotal),
+      subtotal,
+      tax: round2(invoice.tax || 0),
+      taxRate: subtotal > 0 ? round2(((invoice.tax || 0) / subtotal) * 100) : 0,
+      totalAmount: round2(invoice.totalAmount),
+      amountPaid,
+      balanceDue,
+      change,
+      companyInfo: {
+        name: 'LogiFlow',
+        tagline: 'Global Logistics Solutions',
+        address: 'Head Office, Colombo, Sri Lanka',
+        phone: '+94 11 000 0000',
+        email: 'accounts@logiflow.com',
+      },
+    };
+
+    return res.json({
+      status: 'success',
+      receipt,
+    });
+  } catch (error) {
+    console.error('Error generating invoice receipt:', error);
+    return res.status(500).json({
+      status: 500,
+      error: 'Internal Server Error',
+      message: 'Failed to generate invoice receipt.',
+      details: error.message,
+    });
+  }
+}
+
 /**
  * Get all invoices.
  */
