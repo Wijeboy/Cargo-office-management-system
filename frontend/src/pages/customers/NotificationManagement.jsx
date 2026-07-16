@@ -1,172 +1,437 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { apiRequest } from "../../services/api";
 
 const PAGE_SIZE = 5;
 
-const notificationData = [
-  {
-    id: 1,
-    title: "Shipment Dispatched",
-    message:
-      "Your shipment #SHP-89472A has left the Colombo distribution centre and is now in transit.",
-    recipient: "Amelia Silva",
-    channel: "Email",
-    date: "26 Jun 2026, 10:30 AM",
-    status: "Sent",
-    icon: "mail",
-    iconClasses: "bg-violet-100 text-violet-700",
-    action: "View",
-  },
-  {
-    id: 2,
-    title: "Delivery Reminder",
-    message:
-      "Your cargo is expected tomorrow. Please ensure an authorized person is available to receive it.",
-    recipient: "Ravi Kumar",
-    channel: "SMS",
-    date: "Scheduled: 27 Jun 2026, 8:00 AM",
-    status: "Scheduled",
-    icon: "schedule",
-    iconClasses: "bg-emerald-100 text-emerald-700",
-    action: "Edit",
-  },
-  {
-    id: 3,
-    title: "Delivery Delay Alert",
-    message:
-      "Shipment #SHP-89503D has been delayed due to an operational issue. A new ETA will be shared shortly.",
-    recipient: "Dilan Perera",
-    channel: "Alert",
-    date: "25 Jun 2026, 5:42 PM",
-    status: "Failed",
-    icon: "priority_high",
-    iconClasses: "bg-rose-100 text-rose-700",
-    action: "Retry",
-  },
-  {
-    id: 4,
-    title: "Complaint Status Updated",
-    message:
-      "Complaint #CMP-3020 has been resolved. The resolution note is available in your customer portal.",
-    recipient: "Maya Fernando",
-    channel: "In-system",
-    date: "24 Jun 2026, 2:18 PM",
-    status: "Sent",
-    icon: "settings",
-    iconClasses: "bg-amber-100 text-amber-700",
-    action: "View",
-  },
-  {
-    id: 5,
-    title: "Monthly Service Update",
-    message:
-      "Draft notification summarizing recent service improvements and customer support updates.",
-    recipient: "All active customers",
-    channel: "Email",
-    date: "Last edited 23 Jun 2026",
-    status: "Draft",
-    icon: "mail",
-    iconClasses: "bg-violet-100 text-violet-700",
-    action: "Continue",
-  },
-];
+const EMPTY_FORM = {
+  recipientEmail: "",
+  title: "",
+  message: "",
+  type: "INFO",
+};
 
-function statusClasses(status) {
-  switch (status) {
-    case "Sent":
-      return "bg-emerald-100 text-emerald-700";
-    case "Scheduled":
-      return "bg-sky-100 text-sky-700";
-    case "Failed":
-      return "bg-rose-100 text-rose-700";
-    case "Draft":
-      return "bg-slate-200 text-slate-600";
+function formatDate(value) {
+  if (!value) return "Not available";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatType(value = "") {
+  return String(value)
+    .toLowerCase()
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function normalizeNotification(notification) {
+  return {
+    ...notification,
+    id: notification.id,
+    recipientEmail: notification.recipientEmail || "Not provided",
+    title: notification.title || "Untitled notification",
+    message: notification.message || "",
+    type: notification.type || "INFO",
+    isRead: Boolean(notification.isRead),
+    createdAt: notification.createdAt || null,
+    updatedAt: notification.updatedAt || null,
+  };
+}
+
+function typeMeta(type) {
+  switch (String(type).toUpperCase()) {
+    case "SUCCESS":
+      return {
+        icon: "check_circle",
+        iconClasses: "bg-emerald-100 text-emerald-700",
+        badgeClasses: "bg-emerald-100 text-emerald-700",
+      };
+
+    case "WARNING":
+      return {
+        icon: "warning",
+        iconClasses: "bg-amber-100 text-amber-700",
+        badgeClasses: "bg-amber-100 text-amber-700",
+      };
+
+    case "ERROR":
+      return {
+        icon: "error",
+        iconClasses: "bg-rose-100 text-rose-700",
+        badgeClasses: "bg-rose-100 text-rose-700",
+      };
+
     default:
-      return "bg-slate-100 text-slate-600";
+      return {
+        icon: "notifications",
+        iconClasses: "bg-sky-100 text-sky-700",
+        badgeClasses: "bg-sky-100 text-sky-700",
+      };
   }
 }
 
 export default function NotificationManagement() {
+  const [notifications, setNotifications] = useState([]);
+
   const [search, setSearch] = useState("");
-  const [channelFilter, setChannelFilter] = useState("All");
-  const [statusFilter, setStatusFilter] = useState("All");
+  const [typeFilter, setTypeFilter] = useState("ALL");
+  const [readFilter, setReadFilter] = useState("ALL");
   const [currentPage, setCurrentPage] = useState(1);
 
-  const [recipient, setRecipient] = useState("");
-  const [subject, setSubject] = useState("");
-  const [message, setMessage] = useState("");
-  const [delivery, setDelivery] = useState("Send now");
-  const [channels, setChannels] = useState({
-    Email: true,
-    SMS: false,
-    "In-system": false,
-    Alert: false,
-  });
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [editForm, setEditForm] = useState(EMPTY_FORM);
+
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [deletingId, setDeletingId] = useState("");
+  const [markingReadId, setMarkingReadId] = useState("");
+
+  const [pageError, setPageError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+
+  const [selectedNotification, setSelectedNotification] = useState(null);
+  const [viewOpen, setViewOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+
+  async function loadNotifications() {
+    setLoading(true);
+    setPageError("");
+
+    try {
+      const response = await apiRequest("/notifications");
+
+      const list = Array.isArray(response.notifications)
+        ? response.notifications.map(normalizeNotification)
+        : [];
+
+      setNotifications(list);
+    } catch (error) {
+      console.error("Failed to load notifications:", error);
+
+      setPageError(
+        error.message ||
+          "Failed to load notifications. Check whether the backend is running.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadNotifications();
+  }, []);
 
   const filteredNotifications = useMemo(() => {
-    const searchValue = search.trim().toLowerCase();
+    const query = search.trim().toLowerCase();
 
-    return notificationData.filter((notification) => {
+    return notifications.filter((notification) => {
       const matchesSearch =
-        !searchValue ||
-        notification.title.toLowerCase().includes(searchValue) ||
-        notification.recipient.toLowerCase().includes(searchValue) ||
-        notification.message.toLowerCase().includes(searchValue);
+        !query ||
+        notification.title.toLowerCase().includes(query) ||
+        notification.recipientEmail.toLowerCase().includes(query) ||
+        notification.message.toLowerCase().includes(query);
 
-      const matchesChannel =
-        channelFilter === "All" ||
-        notification.channel === channelFilter;
+      const matchesType =
+        typeFilter === "ALL" ||
+        notification.type === typeFilter;
 
-      const matchesStatus =
-        statusFilter === "All" ||
-        notification.status === statusFilter;
+      const matchesRead =
+        readFilter === "ALL" ||
+        (readFilter === "READ" && notification.isRead) ||
+        (readFilter === "UNREAD" && !notification.isRead);
 
-      return matchesSearch && matchesChannel && matchesStatus;
+      return matchesSearch && matchesType && matchesRead;
     });
-  }, [search, channelFilter, statusFilter]);
+  }, [notifications, search, typeFilter, readFilter]);
 
   const totalPages = Math.max(
     1,
-    Math.ceil(filteredNotifications.length / PAGE_SIZE)
+    Math.ceil(filteredNotifications.length / PAGE_SIZE),
   );
 
   const visibleNotifications = filteredNotifications.slice(
     (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
+    currentPage * PAGE_SIZE,
   );
 
-  const toggleChannel = (channel) => {
-    setChannels((current) => ({
-      ...current,
-      [channel]: !current[channel],
-    }));
-  };
-
-  const clearQuickForm = () => {
-    setRecipient("");
-    setSubject("");
-    setMessage("");
-    setDelivery("Send now");
-    setChannels({
-      Email: true,
-      SMS: false,
-      "In-system": false,
-      Alert: false,
-    });
-  };
-
-  const handleSend = () => {
-    if (!recipient || !subject || !message) {
-      alert("Please complete the recipient, subject, and message fields.");
-      return;
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
     }
+  }, [currentPage, totalPages]);
 
-    alert("Notification sent successfully.");
-    clearQuickForm();
-  };
+  const statistics = useMemo(() => {
+    const total = notifications.length;
+    const read = notifications.filter(
+      (notification) => notification.isRead,
+    ).length;
+    const unread = total - read;
+    const success = notifications.filter(
+      (notification) => notification.type === "SUCCESS",
+    ).length;
 
-  const handleSaveDraft = () => {
-    alert("Notification draft saved.");
-  };
+    return {
+      total,
+      read,
+      unread,
+      success,
+    };
+  }, [notifications]);
+
+  function handleFormChange(event) {
+    const { name, value } = event.target;
+
+    setForm((current) => ({
+      ...current,
+      [name]: value,
+    }));
+  }
+
+  function handleEditChange(event) {
+    const { name, value } = event.target;
+
+    setEditForm((current) => ({
+      ...current,
+      [name]: value,
+    }));
+  }
+
+  function resetMessages() {
+    setPageError("");
+    setSuccessMessage("");
+  }
+
+  function openCreateModal() {
+    resetMessages();
+    setForm(EMPTY_FORM);
+    setCreateOpen(true);
+  }
+
+  async function handleCreate(event) {
+    event.preventDefault();
+
+    setSending(true);
+    resetMessages();
+
+    try {
+      await apiRequest("/notifications", {
+        method: "POST",
+        body: JSON.stringify({
+          recipientEmail: form.recipientEmail.trim(),
+          title: form.title.trim(),
+          message: form.message.trim(),
+          type: form.type,
+        }),
+      });
+
+      setSuccessMessage("Notification created successfully.");
+      setForm(EMPTY_FORM);
+      setCreateOpen(false);
+
+      await loadNotifications();
+    } catch (error) {
+      setPageError(
+        error.message || "Failed to create notification.",
+      );
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function openView(notification) {
+    resetMessages();
+
+    try {
+      const response = await apiRequest(
+        `/notifications/${notification.id}`,
+      );
+
+      setSelectedNotification(
+        normalizeNotification(
+          response.notification || notification,
+        ),
+      );
+
+      setViewOpen(true);
+    } catch (error) {
+      setPageError(
+        error.message || "Failed to load notification details.",
+      );
+    }
+  }
+
+  function openEdit(notification) {
+    resetMessages();
+    setSelectedNotification(notification);
+
+    setEditForm({
+      recipientEmail: notification.recipientEmail,
+      title: notification.title,
+      message: notification.message,
+      type: notification.type,
+    });
+
+    setEditOpen(true);
+  }
+
+  async function handleUpdate(event) {
+    event.preventDefault();
+
+    if (!selectedNotification?.id) return;
+
+    setUpdating(true);
+    resetMessages();
+
+    try {
+      await apiRequest(
+        `/notifications/${selectedNotification.id}`,
+        {
+          method: "PUT",
+          body: JSON.stringify({
+            title: editForm.title.trim(),
+            message: editForm.message.trim(),
+            type: editForm.type,
+            isRead: selectedNotification.isRead,
+          }),
+        },
+      );
+
+      setSuccessMessage("Notification updated successfully.");
+      setEditOpen(false);
+      setSelectedNotification(null);
+
+      await loadNotifications();
+    } catch (error) {
+      setPageError(
+        error.message || "Failed to update notification.",
+      );
+    } finally {
+      setUpdating(false);
+    }
+  }
+
+  async function handleMarkRead(notification) {
+    if (notification.isRead) return;
+
+    setMarkingReadId(notification.id);
+    resetMessages();
+
+    try {
+      await apiRequest(
+        `/notifications/${notification.id}/read`,
+        {
+          method: "PATCH",
+        },
+      );
+
+      setSuccessMessage("Notification marked as read.");
+
+      setNotifications((current) =>
+        current.map((item) =>
+          item.id === notification.id
+            ? { ...item, isRead: true }
+            : item,
+        ),
+      );
+    } catch (error) {
+      setPageError(
+        error.message ||
+          "Failed to mark notification as read.",
+      );
+    } finally {
+      setMarkingReadId("");
+    }
+  }
+
+  async function handleDelete(notification) {
+    const confirmed = window.confirm(
+      `Delete notification "${notification.title}"? This action cannot be undone.`,
+    );
+
+    if (!confirmed) return;
+
+    setDeletingId(notification.id);
+    resetMessages();
+
+    try {
+      await apiRequest(`/notifications/${notification.id}`, {
+        method: "DELETE",
+      });
+
+      setNotifications((current) =>
+        current.filter((item) => item.id !== notification.id),
+      );
+
+      setSuccessMessage("Notification deleted successfully.");
+    } catch (error) {
+      setPageError(
+        error.message || "Failed to delete notification.",
+      );
+    } finally {
+      setDeletingId("");
+    }
+  }
+
+  function exportCSV() {
+    const headings = [
+      "Recipient Email",
+      "Title",
+      "Message",
+      "Type",
+      "Read Status",
+      "Created",
+      "Updated",
+    ];
+
+    const rows = filteredNotifications.map((notification) => [
+      notification.recipientEmail,
+      notification.title,
+      notification.message,
+      formatType(notification.type),
+      notification.isRead ? "Read" : "Unread",
+      formatDate(notification.createdAt),
+      formatDate(notification.updatedAt),
+    ]);
+
+    const csv = [headings, ...rows]
+      .map((row) =>
+        row
+          .map(
+            (value) =>
+              `"${String(value ?? "").replaceAll('"', '""')}"`,
+          )
+          .join(","),
+      )
+      .join("\n");
+
+    const blob = new Blob([csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = "notifications.csv";
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <div className="space-y-6 animate-slide-up">
@@ -177,13 +442,13 @@ export default function NotificationManagement() {
           </h1>
 
           <p className="mt-1 text-sm text-slate-500">
-            Create, schedule, and monitor customer notifications across
-            multiple channels.
+            Create, review, update, and manage customer notifications.
           </p>
         </div>
 
         <button
           type="button"
+          onClick={openCreateModal}
           className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 text-sm font-semibold text-white shadow-lg transition hover:bg-slate-800"
         >
           <span className="text-xl leading-none">+</span>
@@ -191,43 +456,59 @@ export default function NotificationManagement() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      {successMessage && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+          {successMessage}
+        </div>
+      )}
+
+      {pageError && (
+        <div className="flex flex-col gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 sm:flex-row sm:items-center sm:justify-between">
+          <span>{pageError}</span>
+
+          <button
+            type="button"
+            onClick={loadNotifications}
+            className="w-fit rounded-lg border border-rose-300 bg-white px-3 py-1.5 font-semibold hover:bg-rose-100"
+          >
+            Try Again
+          </button>
+        </div>
+      )}
+
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           icon="notifications"
-          label="Notifications Sent"
-          value="3,482"
-          trend="+12.4%"
+          label="Total Notifications"
+          value={statistics.total}
           iconClasses="bg-sky-100 text-sky-700"
         />
 
         <StatCard
-          icon="check"
-          label="Delivery Success Rate"
-          value="98.6%"
-          trend="98.6%"
-          iconClasses="bg-emerald-100 text-emerald-700"
-        />
-
-        <StatCard
-          icon="schedule"
-          label="Scheduled"
-          value="27"
-          trend="+8.1%"
+          icon="mark_email_unread"
+          label="Unread"
+          value={statistics.unread}
           iconClasses="bg-amber-100 text-amber-700"
         />
 
         <StatCard
-          icon="priority_high"
-          label="Failed Deliveries"
-          value="49"
-          trend="1.4%"
-          iconClasses="bg-rose-100 text-rose-700"
+          icon="done_all"
+          label="Read"
+          value={statistics.read}
+          iconClasses="bg-violet-100 text-violet-700"
         />
-      </div>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <StatCard
+          icon="check_circle"
+          label="Success Notifications"
+          value={statistics.success}
+          iconClasses="bg-emerald-100 text-emerald-700"
+        />
+      </section>
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="grid gap-3 border-b border-slate-200 p-4 lg:grid-cols-[1fr_160px_160px]">
+          <div className="grid gap-3 border-b border-slate-200 p-4 lg:grid-cols-[1fr_160px_160px_120px]">
             <div className="relative">
               <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xl text-slate-400">
                 search
@@ -240,108 +521,165 @@ export default function NotificationManagement() {
                   setSearch(event.target.value);
                   setCurrentPage(1);
                 }}
-                placeholder="Search by title, recipient, shipment, or message..."
+                placeholder="Search by title, recipient, or message..."
                 className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
               />
             </div>
 
             <select
-              value={channelFilter}
+              value={typeFilter}
               onChange={(event) => {
-                setChannelFilter(event.target.value);
+                setTypeFilter(event.target.value);
                 setCurrentPage(1);
               }}
               className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none"
             >
-              <option value="All">All channels</option>
-              <option value="Email">Email</option>
-              <option value="SMS">SMS</option>
-              <option value="In-system">In-system</option>
-              <option value="Alert">Alert</option>
+              <option value="ALL">All types</option>
+              <option value="INFO">Info</option>
+              <option value="SUCCESS">Success</option>
+              <option value="WARNING">Warning</option>
+              <option value="ERROR">Error</option>
             </select>
 
             <select
-              value={statusFilter}
+              value={readFilter}
               onChange={(event) => {
-                setStatusFilter(event.target.value);
+                setReadFilter(event.target.value);
                 setCurrentPage(1);
               }}
               className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none"
             >
-              <option value="All">All statuses</option>
-              <option value="Sent">Sent</option>
-              <option value="Scheduled">Scheduled</option>
-              <option value="Failed">Failed</option>
-              <option value="Draft">Draft</option>
+              <option value="ALL">All statuses</option>
+              <option value="UNREAD">Unread</option>
+              <option value="READ">Read</option>
             </select>
+
+            <button
+              type="button"
+              onClick={exportCSV}
+              disabled={filteredNotifications.length === 0}
+              className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Export CSV
+            </button>
           </div>
 
           <div>
-            {visibleNotifications.map((notification) => (
-              <article
-                key={notification.id}
-                className="flex gap-4 border-b border-slate-200 px-5 py-5 last:border-b-0"
-              >
-                <div
-                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${notification.iconClasses}`}
-                >
-                  <span className="material-symbols-outlined text-[20px] leading-none">
-                    {notification.icon}
-                  </span>
-                </div>
+            {loading && (
+              <div className="px-5 py-14 text-center text-sm text-slate-500">
+                Loading notifications...
+              </div>
+            )}
 
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <h3 className="font-bold text-slate-900">
-                        {notification.title}
-                      </h3>
+            {!loading &&
+              visibleNotifications.map((notification) => {
+                const meta = typeMeta(notification.type);
 
-                      <p className="mt-1 text-sm leading-6 text-slate-600">
-                        {notification.message}
-                      </p>
-                    </div>
-
-                    <div className="flex shrink-0 items-center gap-2">
-                      <button
-                        type="button"
-                        className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                      >
-                        {notification.action}
-                      </button>
-
-                      <button
-                        type="button"
-                        aria-label="More actions"
-                        className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
-                      >
-                        <span className="material-symbols-outlined text-lg">
-                          more_vert
-                        </span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                    <span>{notification.recipient}</span>
-                    <span>•</span>
-                    <span>{notification.channel}</span>
-                    <span>•</span>
-                    <span>{notification.date}</span>
-
-                    <span
-                      className={`rounded-full px-2.5 py-1 font-semibold ${statusClasses(
-                        notification.status
-                      )}`}
+                return (
+                  <article
+                    key={notification.id}
+                    className={`flex gap-4 border-b border-slate-200 px-5 py-5 last:border-b-0 ${
+                      notification.isRead
+                        ? "bg-white"
+                        : "bg-sky-50/40"
+                    }`}
+                  >
+                    <div
+                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${meta.iconClasses}`}
                     >
-                      {notification.status}
-                    </span>
-                  </div>
-                </div>
-              </article>
-            ))}
+                      <span className="material-symbols-outlined text-[20px] leading-none">
+                        {meta.icon}
+                      </span>
+                    </div>
 
-            {visibleNotifications.length === 0 && (
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <h3 className="font-bold text-slate-900">
+                            {notification.title}
+                          </h3>
+
+                          <p className="mt-1 text-sm leading-6 text-slate-600">
+                            {notification.message}
+                          </p>
+                        </div>
+
+                        <div className="flex shrink-0 flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openView(notification)}
+                            className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                          >
+                            View
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => openEdit(notification)}
+                            className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                          >
+                            Edit
+                          </button>
+
+                          {!notification.isRead && (
+                            <button
+                              type="button"
+                              disabled={
+                                markingReadId === notification.id
+                              }
+                              onClick={() =>
+                                handleMarkRead(notification)
+                              }
+                              className="rounded-lg border border-sky-200 px-3 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-50 disabled:opacity-50"
+                            >
+                              {markingReadId === notification.id
+                                ? "Saving..."
+                                : "Mark Read"}
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            disabled={deletingId === notification.id}
+                            onClick={() =>
+                              handleDelete(notification)
+                            }
+                            className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+                          >
+                            {deletingId === notification.id
+                              ? "Deleting..."
+                              : "Delete"}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                        <span>{notification.recipientEmail}</span>
+                        <span>•</span>
+                        <span>{formatDate(notification.createdAt)}</span>
+
+                        <span
+                          className={`rounded-full px-2.5 py-1 font-semibold ${meta.badgeClasses}`}
+                        >
+                          {formatType(notification.type)}
+                        </span>
+
+                        <span
+                          className={`rounded-full px-2.5 py-1 font-semibold ${
+                            notification.isRead
+                              ? "bg-slate-200 text-slate-600"
+                              : "bg-amber-100 text-amber-700"
+                          }`}
+                        >
+                          {notification.isRead ? "Read" : "Unread"}
+                        </span>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+
+            {!loading && visibleNotifications.length === 0 && (
               <div className="px-5 py-14 text-center text-sm text-slate-500">
                 No notifications found.
               </div>
@@ -357,7 +695,7 @@ export default function NotificationManagement() {
               –
               {Math.min(
                 currentPage * PAGE_SIZE,
-                filteredNotifications.length
+                filteredNotifications.length,
               )}{" "}
               of {filteredNotifications.length} notifications
             </p>
@@ -367,37 +705,25 @@ export default function NotificationManagement() {
                 type="button"
                 disabled={currentPage === 1}
                 onClick={() =>
-                  setCurrentPage((page) => Math.max(1, page - 1))
+                  setCurrentPage((page) =>
+                    Math.max(1, page - 1),
+                  )
                 }
                 className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 ‹
               </button>
 
-              {Array.from(
-                { length: Math.min(totalPages, 3) },
-                (_, index) => index + 1
-              ).map((page) => (
-                <button
-                  type="button"
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`flex h-9 w-9 items-center justify-center rounded-lg border text-sm font-semibold ${
-                    currentPage === page
-                      ? "border-slate-950 bg-slate-950 text-white"
-                      : "border-slate-200 bg-white text-slate-700"
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-950 text-sm font-semibold text-white">
+                {currentPage}
+              </span>
 
               <button
                 type="button"
                 disabled={currentPage === totalPages}
                 onClick={() =>
                   setCurrentPage((page) =>
-                    Math.min(totalPages, page + 1)
+                    Math.min(totalPages, page + 1),
                   )
                 }
                 className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
@@ -414,94 +740,67 @@ export default function NotificationManagement() {
           </h2>
 
           <p className="mt-1 text-sm leading-6 text-slate-500">
-            Compose and send a customer notification directly from this panel.
+            Compose and send a customer notification directly.
           </p>
 
-          <div className="mt-5 space-y-4">
-            <Field label="Recipient">
-              <select
-                value={recipient}
-                onChange={(event) => setRecipient(event.target.value)}
-                className="form-input"
-              >
-                <option value="">Select customer</option>
-                <option value="Amelia Silva">Amelia Silva</option>
-                <option value="Ravi Kumar">Ravi Kumar</option>
-                <option value="Maya Fernando">Maya Fernando</option>
-                <option value="Dilan Perera">Dilan Perera</option>
-                <option value="Sara Nimal">Sara Nimal</option>
-              </select>
-            </Field>
-
-            <Field label="Subject">
+          <form onSubmit={handleCreate} className="mt-5 space-y-4">
+            <Field label="Recipient Email" required>
               <input
-                value={subject}
-                onChange={(event) => setSubject(event.target.value)}
-                placeholder="Enter notification subject"
+                type="email"
+                name="recipientEmail"
+                value={form.recipientEmail}
+                onChange={handleFormChange}
+                placeholder="customer@example.com"
                 className="form-input"
+                required
               />
             </Field>
 
-            <Field label="Channels">
-              <div className="grid grid-cols-2 gap-2">
-                {Object.keys(channels).map((channel) => (
-                  <label
-                    key={channel}
-                    className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 px-3 py-3 text-sm font-medium text-slate-700"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={channels[channel]}
-                      onChange={() => toggleChannel(channel)}
-                      className="accent-blue-600"
-                    />
-
-                    {channel}
-                  </label>
-                ))}
-              </div>
+            <Field label="Title" required>
+              <input
+                name="title"
+                value={form.title}
+                onChange={handleFormChange}
+                placeholder="Enter notification title"
+                className="form-input"
+                required
+              />
             </Field>
 
-            <Field label="Message">
+            <Field label="Type" required>
+              <select
+                name="type"
+                value={form.type}
+                onChange={handleFormChange}
+                className="form-input"
+              >
+                <option value="INFO">Info</option>
+                <option value="SUCCESS">Success</option>
+                <option value="WARNING">Warning</option>
+                <option value="ERROR">Error</option>
+              </select>
+            </Field>
+
+            <Field label="Message" required>
               <textarea
-                value={message}
-                onChange={(event) => setMessage(event.target.value)}
+                name="message"
+                value={form.message}
+                onChange={handleFormChange}
                 placeholder="Write the notification message..."
                 rows="5"
                 className="form-input resize-none"
+                required
               />
             </Field>
 
-            <Field label="Delivery">
-              <select
-                value={delivery}
-                onChange={(event) => setDelivery(event.target.value)}
-                className="form-input"
-              >
-                <option value="Send now">Send now</option>
-                <option value="Schedule">Schedule</option>
-                <option value="Save as draft">Save as draft</option>
-              </select>
-            </Field>
-
-            <div className="grid grid-cols-2 gap-3 pt-2">
-              <button
-                type="button"
-                onClick={handleSaveDraft}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                Save Draft
-              </button>
-
-              <button
-                type="button"
-                onClick={handleSend}
-                className="rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800"
-              >
-                Send
-              </button>
-            </div>
-          </div>
+            <button
+              type="submit"
+              disabled={sending}
+              className="w-full rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {sending ? "Sending..." : "Send Notification"}
+            </button>
+          </form>
         </aside>
       </div>
 
@@ -514,15 +813,193 @@ export default function NotificationManagement() {
           <a href="#">Terms of Service</a>
         </div>
       </footer>
+
+      {createOpen && (
+        <Modal
+          title="Create Notification"
+          subtitle="Send a notification to a customer email address."
+          onClose={() => !sending && setCreateOpen(false)}
+        >
+          <form onSubmit={handleCreate}>
+            <div className="space-y-4">
+              <Field label="Recipient Email" required>
+                <input
+                  type="email"
+                  name="recipientEmail"
+                  value={form.recipientEmail}
+                  onChange={handleFormChange}
+                  className="form-input"
+                  required
+                />
+              </Field>
+
+              <Field label="Title" required>
+                <input
+                  name="title"
+                  value={form.title}
+                  onChange={handleFormChange}
+                  className="form-input"
+                  required
+                />
+              </Field>
+
+              <Field label="Type" required>
+                <select
+                  name="type"
+                  value={form.type}
+                  onChange={handleFormChange}
+                  className="form-input"
+                >
+                  <option value="INFO">Info</option>
+                  <option value="SUCCESS">Success</option>
+                  <option value="WARNING">Warning</option>
+                  <option value="ERROR">Error</option>
+                </select>
+              </Field>
+
+              <Field label="Message" required>
+                <textarea
+                  name="message"
+                  value={form.message}
+                  onChange={handleFormChange}
+                  rows="5"
+                  className="form-input resize-none"
+                  required
+                />
+              </Field>
+            </div>
+
+            <ModalButtons
+              loading={sending}
+              onCancel={() => setCreateOpen(false)}
+              submitText="Create Notification"
+            />
+          </form>
+        </Modal>
+      )}
+
+      {editOpen && selectedNotification && (
+        <Modal
+          title="Edit Notification"
+          subtitle={`Recipient: ${selectedNotification.recipientEmail}`}
+          onClose={() => !updating && setEditOpen(false)}
+        >
+          <form onSubmit={handleUpdate}>
+            <div className="space-y-4">
+              <Field label="Recipient Email">
+                <input
+                  value={editForm.recipientEmail}
+                  className="form-input bg-slate-100"
+                  disabled
+                />
+              </Field>
+
+              <Field label="Title" required>
+                <input
+                  name="title"
+                  value={editForm.title}
+                  onChange={handleEditChange}
+                  className="form-input"
+                  required
+                />
+              </Field>
+
+              <Field label="Type" required>
+                <select
+                  name="type"
+                  value={editForm.type}
+                  onChange={handleEditChange}
+                  className="form-input"
+                >
+                  <option value="INFO">Info</option>
+                  <option value="SUCCESS">Success</option>
+                  <option value="WARNING">Warning</option>
+                  <option value="ERROR">Error</option>
+                </select>
+              </Field>
+
+              <Field label="Message" required>
+                <textarea
+                  name="message"
+                  value={editForm.message}
+                  onChange={handleEditChange}
+                  rows="5"
+                  className="form-input resize-none"
+                  required
+                />
+              </Field>
+            </div>
+
+            <ModalButtons
+              loading={updating}
+              onCancel={() => setEditOpen(false)}
+              submitText="Save Changes"
+            />
+          </form>
+        </Modal>
+      )}
+
+      {viewOpen && selectedNotification && (
+        <Modal
+          title="Notification Details"
+          subtitle={selectedNotification.title}
+          onClose={() => {
+            setViewOpen(false);
+            setSelectedNotification(null);
+          }}
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Detail
+              label="Recipient Email"
+              value={selectedNotification.recipientEmail}
+            />
+
+            <Detail
+              label="Type"
+              value={formatType(selectedNotification.type)}
+            />
+
+            <Detail
+              label="Read Status"
+              value={
+                selectedNotification.isRead ? "Read" : "Unread"
+              }
+            />
+
+            <Detail
+              label="Created"
+              value={formatDate(selectedNotification.createdAt)}
+            />
+
+            <Detail
+              label="Updated"
+              value={formatDate(selectedNotification.updatedAt)}
+            />
+
+            <Detail
+              label="Title"
+              value={selectedNotification.title}
+              full
+            />
+
+            <Detail
+              label="Message"
+              value={selectedNotification.message}
+              full
+            />
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
 
-function Field({ label, children }) {
+function Field({ label, required = false, children }) {
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-semibold text-slate-700">
         {label}
+        {required && <span className="ml-1 text-rose-500">*</span>}
       </span>
 
       {children}
@@ -530,26 +1007,14 @@ function Field({ label, children }) {
   );
 }
 
-function StatCard({
-  icon,
-  label,
-  value,
-  trend,
-  iconClasses,
-}) {
+function StatCard({ icon, label, value, iconClasses }) {
   return (
     <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-start justify-between">
-        <div
-          className={`flex h-11 w-11 items-center justify-center rounded-xl ${iconClasses}`}
-        >
-          <span className="material-symbols-outlined block text-[20px] leading-none">
-            {icon}
-          </span>
-        </div>
-
-        <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-600">
-          {trend}
+      <div
+        className={`flex h-11 w-11 items-center justify-center rounded-xl ${iconClasses}`}
+      >
+        <span className="material-symbols-outlined block text-[20px] leading-none">
+          {icon}
         </span>
       </div>
 
@@ -559,5 +1024,88 @@ function StatCard({
         {value}
       </p>
     </article>
+  );
+}
+
+function Modal({ title, subtitle, children, onClose }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <section className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <div className="flex items-start justify-between border-b border-slate-200 px-6 py-5">
+          <div>
+            <h2 className="text-xl font-bold text-slate-900">
+              {title}
+            </h2>
+
+            {subtitle && (
+              <p className="mt-1 text-sm text-slate-500">
+                {subtitle}
+              </p>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+            aria-label="Close modal"
+          >
+            <span className="material-symbols-outlined">
+              close
+            </span>
+          </button>
+        </div>
+
+        <div className="p-6">{children}</div>
+      </section>
+    </div>
+  );
+}
+
+function ModalButtons({ loading, onCancel, submitText }) {
+  return (
+    <div className="mt-6 flex justify-end gap-3 border-t border-slate-200 pt-5">
+      <button
+        type="button"
+        onClick={onCancel}
+        disabled={loading}
+        className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-50"
+      >
+        Cancel
+      </button>
+
+      <button
+        type="submit"
+        disabled={loading}
+        className="rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+      >
+        {loading ? "Saving..." : submitText}
+      </button>
+    </div>
+  );
+}
+
+function Detail({ label, value, full = false }) {
+  return (
+    <div
+      className={`rounded-xl border border-slate-200 bg-slate-50 p-4 ${
+        full ? "sm:col-span-2" : ""
+      }`}
+    >
+      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+
+      <p className="mt-2 whitespace-pre-wrap break-words text-sm font-semibold leading-6 text-slate-800">
+        {value || "Not provided"}
+      </p>
+    </div>
   );
 }
