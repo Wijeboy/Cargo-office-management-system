@@ -18,6 +18,7 @@
   body {
     @apply bg-surface text-on-surface font-sans;
     font-family: 'Inter', sans-serif;
+    margin: 0;
   }
 
   ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -218,4 +219,24 @@
 }
 .hero-overlay-tr {
   background: linear-gradient(to top right, rgba(4, 22, 39, 0.9) 0%, rgba(4, 22, 39, 0.4) 60%, transparent 100%);
+}
+
+/* ─── Finance specific inputs ──────────────────────────── */
+.form-input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #dbe3ee;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 10px 14px;
+  font-size: 14px;
+  color: #0f172a;
+  outline: none;
+  transition: 0.2s ease;
+}
+
+.form-input:focus {
+  border-color: #38bdf8;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
 }

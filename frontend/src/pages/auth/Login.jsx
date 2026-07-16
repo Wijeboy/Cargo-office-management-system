@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 export default function Login() {
-  const { login } = useAuth();
+  const { login, verify2FA } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
@@ -11,15 +11,52 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // 2FA login state
+  const [show2FA, setShow2FA] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [userId, setUserId] = useState('');
+
+  const handleRedirect = (userObj) => {
+    if (userObj.role === 'FINANCE') {
+      navigate('/finance');
+    } else if (userObj.role === 'CUSTOMER_SERVICE') {
+      navigate('/customer-portal/dashboard');
+    } else if (userObj.role === 'WAREHOUSE') {
+      navigate('/warehouse');
+    } else {
+      navigate('/dashboard');
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      await login(form.email, form.password);
-      navigate('/dashboard');
+      const res = await login(form.email, form.password);
+      if (res && res.twoFARequired) {
+        setUserId(res.userId);
+        setShow2FA(true);
+        setLoading(false);
+        return;
+      }
+      handleRedirect(res);
     } catch (err) {
       setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handle2FASubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const userObj = await verify2FA(userId, otp);
+      handleRedirect(userObj);
+    } catch (err) {
+      setError(err.message || 'Invalid code.');
     } finally {
       setLoading(false);
     }
@@ -93,7 +130,40 @@ export default function Login() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-stack-md">
+            {show2FA ? (
+              <form onSubmit={handle2FASubmit} className="flex flex-col gap-stack-md">
+                <div className="mb-4">
+                  <h3 className="text-headline-md text-primary font-bold">2FA Authentication</h3>
+                  <p className="text-on-surface-variant text-body-sm mt-1">Please enter the 6-digit verification code from your authenticator app.</p>
+                </div>
+
+                <div>
+                  <label className="input-label" htmlFor="otp">Verification Code</label>
+                  <div className="relative">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-xl pointer-events-none">security</span>
+                    <input
+                      id="otp"
+                      type="text"
+                      maxLength={6}
+                      className="input-with-icon"
+                      placeholder="Enter 123456 for demo"
+                      value={otp}
+                      onChange={e => setOtp(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <button type="submit" disabled={loading} className="btn-accent mt-2 h-12">
+                  {loading ? 'Verifying...' : 'Verify & Sign In'}
+                </button>
+
+                <button type="button" onClick={() => setShow2FA(false)} className="text-body-sm text-accent font-semibold text-center mt-2 hover:underline">
+                  Back to Sign In
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleSubmit} className="flex flex-col gap-stack-md">
               {/* Email */}
               <div>
                 <label className="input-label" htmlFor="email">Work Email</label>
@@ -187,6 +257,7 @@ export default function Login() {
               </Link>
 
             </form>
+            )}
 
             <div className="mt-6 text-center">
               <p className="text-body-sm text-on-surface-variant">

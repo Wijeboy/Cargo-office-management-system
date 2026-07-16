@@ -345,6 +345,178 @@ export const MOCK_NOTIFICATIONS = [
   { id: 'notif_004', title: 'Cargo Damage Report', message: 'LOG-2405 reported with minor damage at Zone C.', type: 'WARNING', isRead: false, createdAt: '2024-10-22T09:00:00Z' },
 ];
 
+// ─── Cargo Booking (Create Booking form defaults) ───────────────────────────
+export const MOCK_BOOKING_DEFAULTS = {
+  bookingId: 'LOGI-98402',
+  sender: {
+    fullName: 'Acme Logistics Inc.',
+    contactNumber: '+1 (555) 123-4567',
+    address: '123 Logistics Hub, Port Area, Oakland, CA',
+  },
+  consignee: {
+    name: 'Apex Manufacturing Solutions',
+    contactPerson: 'Sarah Chen',
+    address: '45 Main Campus, San Francisco, CA',
+  },
+  cargo: {
+    description: 'Machine parts, model XYZ-7',
+    weight: 1240,
+    dimensions: '120 x 80 x 150',
+  },
+  booking: {
+    shippingMethod: 'Express Air',
+    expectedDate: 'Oct 30, 2024',
+  },
+};
+
+// ─── Unscheduled Cargo (Shipment Scheduling) ─────────────────────────────────
+export const MOCK_UNSCHEDULED_CARGO = [
+  {
+    id: 'cargo_001',
+    cargoId: 'LOGI-98402',
+    description: 'Machine Parts, model XYZ',
+    destination: 'San Francisco, CA',
+    weight: 1240,
+    priority: 'High',
+  },
+  {
+    id: 'cargo_002',
+    cargoId: 'LOGI-98351',
+    description: 'Consumer Electronics',
+    destination: 'Los Angeles, CA',
+    weight: 850,
+    priority: 'Standard',
+  },
+];
+
+// ─── Fleet / Vehicles ────────────────────────────────────────────────────────
+export const MOCK_VEHICLES = [
+  {
+    id: 'veh_001',
+    vehicleId: 'T304',
+    type: 'Heavy Truck',
+    capacity: 22000,
+    status: 'Available',
+    description: 'Truck, Heavy Capacity (22,000 kg)',
+  },
+  {
+    id: 'veh_002',
+    vehicleId: 'T310',
+    type: 'Truck',
+    capacity: 14000,
+    status: 'In Use',
+    description: 'Truck, Standard Capacity (14,000 kg)',
+  },
+];
+
+// ─── Routes ──────────────────────────────────────────────────────────────────
+export const MOCK_ROUTES = [
+  {
+    id: 'route_001',
+    routeId: 'US-W101',
+    startHub: 'Oakland',
+    endHub: 'Chicago',
+    estimatedDays: 2.5,
+  },
+  {
+    id: 'route_002',
+    routeId: 'US-W102',
+    startHub: 'Chicago',
+    endHub: 'JFK Airport',
+    estimatedDays: 1.5,
+  },
+];
+
+export const MOCK_ROUTE_HUBS = [
+  { id: 'hub_001', name: 'Oakland Hub', x: 80, y: 180, color: '#f59e0b' },
+  { id: 'hub_002', name: 'Chicago Hub', x: 280, y: 120, color: '#009adb' },
+  { id: 'hub_003', name: 'JFK Airport', x: 480, y: 100, color: '#009adb' },
+];
+
+// ─── Operations Reports ──────────────────────────────────────────────────────
+export const MOCK_OPERATIONS_REPORTS = {
+  kpis: [
+    { label: 'Total Weekly Shipments', value: '1,240', trend: '↑ 8% vs Last Week', trendUp: true },
+    { label: 'On-Time Delivery Rate', value: '98.5%', trend: '↑ 0.5% Trend', trendUp: true },
+    { label: 'Avg. Transit Time (days)', value: '3.2', trend: '↓ 0.1 days Trend', trendUp: true },
+    { label: 'Pending Deliveries', value: '43', trend: '↑ 15% vs Last Week', trendUp: false },
+  ],
+  weeklyTrend: [
+    { day: 'Mon', value: 165 },
+    { day: 'Tue', value: 198 },
+    { day: 'Wed', value: 210 },
+    { day: 'Thu', value: 245 },
+    { day: 'Fri', value: 220 },
+    { day: 'Sat', value: 102 },
+    { day: 'Sun', value: 100 },
+  ],
+  deliveryBreakdown: [
+    { name: 'Delivered', count: 1141, color: '#10b981' },
+    { name: 'In Transit', count: 62, color: '#009adb' },
+    { name: 'Delayed', count: 37, color: '#f59e0b' },
+  ],
+};
+
+// ─── Shipment History (Archive) ──────────────────────────────────────────────
+export const MOCK_SHIPMENT_HISTORY = [
+  {
+    id: 'hist_001',
+    shipmentId: 'SHP-1042',
+    completedDate: 'Dec 14, 2023',
+    customer: 'Acme Corp Logistics',
+    route: 'Colombo → Kandy',
+    finalStatus: 'Completed',
+  },
+  {
+    id: 'hist_002',
+    shipmentId: 'SHP-1041',
+    completedDate: 'Dec 12, 2023',
+    customer: 'Global Exports Ltd',
+    route: 'Galle → Colombo',
+    finalStatus: 'Archived',
+  },
+  {
+    id: 'hist_003',
+    shipmentId: 'SHP-1038',
+    completedDate: 'Nov 28, 2023',
+    customer: 'Apex Manufacturing',
+    route: 'Negombo → Jaffna',
+    finalStatus: 'Cancelled',
+  },
+  {
+    id: 'hist_004',
+    shipmentId: 'SHP-1035',
+    completedDate: 'Nov 15, 2023',
+    customer: 'TechSupplies Inc',
+    route: 'Colombo → Matara',
+    finalStatus: 'Completed',
+  },
+];
+
+export const MOCK_ARCHIVE_STATS = {
+  totalRecords: 24892,
+  completed: 23105,
+  cancelled: 1787,
+};
+
+// ─── Cargo Tracking (LOGI-98402 detailed timeline) ───────────────────────────
+export const MOCK_CARGO_TRACKING = {
+  'LOGI-98402': {
+    shipmentName: 'Express Air Shipment (Oct 28)',
+    currentLocation: 'New York (JFK)',
+    sender: 'Acme Logistics Inc.',
+    consignee: 'Apex Manufacturing Solutions',
+    destination: 'San Francisco, CA',
+    timeline: [
+      { id: 1, label: 'Shipped from Port Oakland', date: 'Oct 26, 2024 - 10:00 AM', status: 'completed' },
+      { id: 2, label: 'Arrived at Hub 1, Chicago', date: 'Oct 27, 2024 - 06:30 PM', status: 'completed' },
+      { id: 3, label: 'Departed Hub 2, New York (JFK)', date: 'Oct 28, 2024 - 08:00 AM (Est.)', status: 'current' },
+      { id: 4, label: 'Arrived JFK Airport', date: null, status: 'pending' },
+      { id: 5, label: 'Out for Delivery', date: null, status: 'pending' },
+    ],
+  },
+};
+
 // ─── Mock Auth ───────────────────────────────────────────────────────────────
 export const MOCK_CREDENTIALS = {
   'admin@logiflow.com': { password: 'admin123', userId: 'usr_001' },
@@ -353,3 +525,49 @@ export const MOCK_CREDENTIALS = {
   'cs@logiflow.com': { password: 'cs123', userId: 'usr_004' },
   'warehouse@logiflow.com': { password: 'warehouse123', userId: 'usr_005' },
 };
+
+
+export const mockReceiptItems = [
+  {
+    title: "Cross-Country Freight",
+    details: "Chicago to Los Angeles - Logistics Route A-12",
+    quantity: 2,
+    rate: 8200.0,
+    amount: 16400.0,
+  },
+  {
+    title: "Terminal Handling Fees",
+    details: "Processing and priority loading surcharge",
+    quantity: 1,
+    rate: 1200.0,
+    amount: 1200.0,
+  },
+  {
+    title: "Insurance Premium",
+    details: "Comprehensive cargo protection plan",
+    quantity: 1,
+    rate: 800.0,
+    amount: 800.0,
+  },
+];
+
+export const mockAuditTrail = [
+  {
+    time: "Today, 14:32",
+    title: "Invoice finalized",
+    meta: "Admin: Marcus Sterling",
+    current: true,
+  },
+  {
+    time: "Today, 14:28",
+    title: "Payment verified",
+    meta: "Method: Wire Transfer",
+    current: false,
+  },
+  {
+    time: "Today, 11:15",
+    title: "Invoice generated",
+    meta: "Auto-generated from system",
+    current: false,
+  },
+];

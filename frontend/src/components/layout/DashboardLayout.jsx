@@ -1,17 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { MOCK_NOTIFICATIONS } from '../../data/mockData';
 
-const NAV_ITEMS = [
-  { to: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
-  { to: '/cargo', icon: 'local_shipping', label: 'Shipments' },
-  { to: '/track', icon: 'location_on', label: 'Track Cargo' },
-  { to: '/customers', icon: 'group', label: 'Customers' },
-  { to: '/invoices', icon: 'receipt_long', label: 'Finance' },
-  { to: '/warehouse', icon: 'warehouse', label: 'Warehouse' },
-  { to: '/users', icon: 'manage_accounts', label: 'Users' },
-];
+
 
 export default function DashboardLayout({ children }) {
   const { user, logout } = useAuth();
@@ -19,9 +11,78 @@ export default function DashboardLayout({ children }) {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
   const [search, setSearch] = useState('');
+  const notifRef = useRef(null);
 
-  const unreadCount = MOCK_NOTIFICATIONS.filter(n => !n.isRead).length;
+  const getNavItems = () => {
+    const items = [
+      { to: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
+      { to: '/cargo', icon: 'table_rows', label: 'Cargo Booking' },
+      { to: '/cargo/new', icon: 'add_circle', label: 'Create Booking' },
+      { to: '/scheduling', icon: 'calendar_month', label: 'Shipment Scheduling' },
+      { to: '/track', icon: 'my_location', label: 'Cargo Tracking' },
+      { to: '/routes', icon: 'route', label: 'Route Management' },
+      { to: '/reports', icon: 'pie_chart', label: 'Operations Reports' },
+      { to: '/history', icon: 'history', label: 'Shipment History' },
+    ];
+
+    if (user?.role === 'ADMIN') {
+      return [
+        ...items,
+        { to: '/warehouse', icon: 'warehouse', label: 'Warehouse Log' },
+        { to: '/users', icon: 'manage_accounts', label: 'User Management' },
+      ];
+    }
+
+    if (user?.role === 'WAREHOUSE') {
+      return [
+        { to: '/warehouse', icon: 'warehouse', label: 'Warehouse Log' },
+        { to: '/track', icon: 'my_location', label: 'Cargo Tracking' },
+      ];
+    }
+
+    return items;
+  };
+
+  const navItems = getNavItems();
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  useEffect(() => {
+    setNotifOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!notifOpen) return;
+
+    const handleClickOutside = (event) => {
+      if (notifRef.current && !notifRef.current.contains(event.target)) {
+        setNotifOpen(false);
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') setNotifOpen(false);
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [notifOpen]);
+
+  const handleMarkAllRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+  };
+
+  const handleNotificationClick = (id) => {
+    setNotifications(prev =>
+      prev.map(n => (n.id === id ? { ...n, isRead: true } : n))
+    );
+  };
 
   const handleLogout = () => {
     logout();
@@ -61,8 +122,10 @@ export default function DashboardLayout({ children }) {
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
-          {NAV_ITEMS.map(item => {
-            const active = location.pathname === item.to || (item.to !== '/dashboard' && location.pathname.startsWith(item.to));
+          {navItems.map(item => {
+            const active = location.pathname === item.to ||
+              (item.to === '/cargo' && location.pathname === '/cargo') ||
+              (item.to !== '/dashboard' && item.to !== '/cargo' && location.pathname.startsWith(item.to));
             return (
               <Link
                 key={item.to}
@@ -79,21 +142,22 @@ export default function DashboardLayout({ children }) {
 
         {/* User section */}
         <div className="p-3 border-t border-outline-variant space-y-0.5">
-          <Link to="/profile" onClick={() => setSidebarOpen(false)} className="nav-item">
+          <Link to="/profile" onClick={() => setSidebarOpen(false)} className={`nav-item ${location.pathname === '/profile' ? 'nav-item-active' : ''}`}>
             <span className="material-symbols-outlined text-xl">person</span>
-            <span className="text-sm font-medium">My Profile</span>
+            <span className="text-sm font-medium">Profile</span>
           </Link>
           <button onClick={handleLogout} className="nav-item w-full hover:bg-error-container hover:text-on-error-container text-left">
             <span className="material-symbols-outlined text-xl">logout</span>
             <span className="text-sm font-medium">Logout</span>
           </button>
+          <p className="text-[10px] text-on-surface-variant px-3 pt-2">© 2024 LogiFlow Systems Inc.</p>
         </div>
       </aside>
 
       {/* ── Main area ── */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* ── Top Header ── */}
-        <header className="flex items-center gap-4 px-6 py-3 bg-surface-container-lowest border-b border-outline-variant sticky top-0 z-20">
+        <header className="flex items-center gap-4 px-6 py-3 bg-surface-container-lowest border-b border-outline-variant sticky top-0 z-30 flex-shrink-0">
           {/* Mobile menu btn */}
           <button className="lg:hidden btn-ghost p-2" onClick={() => setSidebarOpen(true)}>
             <span className="material-symbols-outlined">menu</span>
@@ -115,37 +179,62 @@ export default function DashboardLayout({ children }) {
 
           <div className="flex items-center gap-2 ml-auto">
             {/* Notifications */}
-            <div className="relative">
+            <div className="relative" ref={notifRef}>
               <button
-                className="btn-ghost p-2 relative"
+                type="button"
+                className="btn-ghost p-2.5 relative"
                 onClick={() => setNotifOpen(p => !p)}
+                aria-label="Notifications"
+                aria-expanded={notifOpen}
+                aria-haspopup="true"
               >
-                <span className="material-symbols-outlined">notifications</span>
+                <span className="material-symbols-outlined text-2xl">notifications</span>
                 {unreadCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-error text-on-error text-[10px] font-bold rounded-full flex items-center justify-center">
+                  <span className="absolute top-1 right-1 w-4 h-4 bg-error text-on-error text-[10px] font-bold rounded-full flex items-center justify-center">
                     {unreadCount}
                   </span>
                 )}
               </button>
 
               {notifOpen && (
-                <div className="absolute right-0 top-full mt-2 w-80 bg-surface-container-lowest border border-outline-variant rounded-xl shadow-card-hover z-50 animate-slide-up">
+                <div
+                  role="menu"
+                  className="absolute right-0 top-full mt-2 w-80 bg-surface-container-lowest border border-outline-variant rounded-xl shadow-card-hover z-[100] animate-slide-up"
+                >
                   <div className="flex items-center justify-between px-4 py-3 border-b border-outline-variant">
                     <h3 className="font-semibold text-on-surface text-sm">Notifications</h3>
-                    <span className="text-xs text-accent font-medium cursor-pointer hover:underline">Mark all read</span>
+                    {unreadCount > 0 && (
+                      <button
+                        type="button"
+                        className="text-xs text-accent font-medium hover:underline"
+                        onClick={handleMarkAllRead}
+                      >
+                        Mark all read
+                      </button>
+                    )}
                   </div>
                   <div className="max-h-72 overflow-y-auto divide-y divide-outline-variant">
-                    {MOCK_NOTIFICATIONS.map(n => (
-                      <div key={n.id} className={`px-4 py-3 hover:bg-surface-container-low transition-colors cursor-pointer ${!n.isRead ? 'bg-secondary-container/20' : ''}`}>
-                        <div className="flex items-start gap-3">
-                          <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${!n.isRead ? 'bg-accent' : 'bg-transparent'}`} />
-                          <div>
-                            <p className="text-sm font-semibold text-on-surface">{n.title}</p>
-                            <p className="text-xs text-on-surface-variant mt-0.5 leading-snug">{n.message}</p>
+                    {notifications.length === 0 ? (
+                      <p className="px-4 py-6 text-sm text-on-surface-variant text-center">No notifications</p>
+                    ) : (
+                      notifications.map(n => (
+                        <button
+                          key={n.id}
+                          type="button"
+                          role="menuitem"
+                          onClick={() => handleNotificationClick(n.id)}
+                          className={`w-full text-left px-4 py-3 hover:bg-surface-container-low transition-colors ${!n.isRead ? 'bg-secondary-container/20' : ''}`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${!n.isRead ? 'bg-accent' : 'bg-transparent'}`} />
+                            <div>
+                              <p className="text-sm font-semibold text-on-surface">{n.title}</p>
+                              <p className="text-xs text-on-surface-variant mt-0.5 leading-snug">{n.message}</p>
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                    ))}
+                        </button>
+                      ))
+                    )}
                   </div>
                 </div>
               )}
@@ -158,8 +247,12 @@ export default function DashboardLayout({ children }) {
 
             {/* User avatar */}
             <Link to="/profile" className="flex items-center gap-2.5 pl-2 border-l border-outline-variant ml-1">
-              <div className="w-9 h-9 rounded-full bg-primary-container ring-2 ring-primary-fixed flex items-center justify-center text-sm font-bold text-on-primary-container cursor-pointer hover:ring-accent transition-all">
-                {initials}
+              <div className="w-9 h-9 rounded-full overflow-hidden bg-primary-container ring-2 ring-primary-fixed flex items-center justify-center text-sm font-bold text-on-primary-container cursor-pointer hover:ring-accent transition-all">
+                {user?.avatar ? (
+                  <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  initials
+                )}
               </div>
               <div className="hidden md:block">
                 <p className="text-sm font-semibold text-on-surface leading-none">{user?.name}</p>
@@ -170,7 +263,7 @@ export default function DashboardLayout({ children }) {
         </header>
 
         {/* ── Page content ── */}
-        <main className="flex-1 overflow-y-auto animate-fade-in">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 animate-fade-in">
           <div className="p-6 h-full">
             {children}
           </div>
