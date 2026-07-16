@@ -13,13 +13,18 @@ const formatDate = (d) =>
   d ? new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—";
 
 // `payments` is the API's recentPayments array from GET /api/finance/dashboard
-export default function TransactionsTable({ payments }) {
+export default function TransactionsTable({ payments, onNavigate }) {
   const rows = payments || [];
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
         <p className="text-sm font-semibold text-gray-900">Recent Transactions</p>
+        {onNavigate && (
+          <button onClick={() => onNavigate("invoices")} className="text-xs font-medium text-indigo-600 hover:text-indigo-700">
+            View All
+          </button>
+        )}
       </div>
 
       <div className="overflow-x-auto">

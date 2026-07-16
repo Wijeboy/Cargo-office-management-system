@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Download, Plus, Search, Calendar } from "lucide-react";
+import { Download, Plus, Search, Calendar, Printer } from "lucide-react";
 import { getInvoices } from "../../api/financeApi";
 
 const statusStyles = {
@@ -12,10 +12,17 @@ const statusStyles = {
 const filterTabs = ["All", "PAID", "PENDING", "PARTIALLY_PAID"];
 
 const currency = (n) =>
-  `$${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  Number(n || 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
 
 const formatDate = (d) =>
   d ? new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—";
+
+const getDueDateString = (invoiceDate) => {
+  if (!invoiceDate) return "N/A";
+  const date = new Date(invoiceDate);
+  date.setDate(date.getDate() + 30); // Default Net 30
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+};
 
 export default function InvoiceManagement({ onNavigate }) {
   const [activeFilter, setActiveFilter] = useState("All");
@@ -45,24 +52,25 @@ export default function InvoiceManagement({ onNavigate }) {
   const filtered = useMemo(() => {
     let list = invoices;
     if (activeFilter !== "All") {
-      list = list.filter((i) => i.paymentStatus === activeFilter);
+      list = list.filter((i) => i.paymentStatus?.toUpperCase() === activeFilter);
     }
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter(
         (i) =>
-          i.invoiceNo.toLowerCase().includes(q) ||
-          i.customer?.name?.toLowerCase().includes(q)
+          i.invoiceNo?.toLowerCase().includes(q) ||
+          i.customer?.name?.toLowerCase().includes(q) ||
+          i.customer?.company?.toLowerCase().includes(q)
       );
     }
     return list;
   }, [invoices, activeFilter, search]);
 
   const totals = useMemo(() => {
-    const totalInvoiced = invoices.reduce((sum, i) => sum + i.totalAmount, 0);
-    const paid = invoices.filter((i) => i.paymentStatus === "PAID").reduce((s, i) => s + i.totalAmount, 0);
-    const pending = invoices.filter((i) => i.paymentStatus === "PENDING").reduce((s, i) => s + i.totalAmount, 0);
-    const partial = invoices.filter((i) => i.paymentStatus === "PARTIALLY_PAID").reduce((s, i) => s + i.totalAmount, 0);
+    const totalInvoiced = invoices.reduce((sum, i) => sum + (i.totalAmount || 0), 0);
+    const paid = invoices.filter((i) => i.paymentStatus?.toUpperCase() === "PAID").reduce((s, i) => s + i.totalAmount, 0);
+    const pending = invoices.filter((i) => i.paymentStatus?.toUpperCase() === "PENDING").reduce((s, i) => s + i.totalAmount, 0);
+    const partial = invoices.filter((i) => i.paymentStatus?.toUpperCase() === "PARTIALLY_PAID").reduce((s, i) => s + i.totalAmount, 0);
     return { totalInvoiced, paid, pending, partial };
   }, [invoices]);
 
@@ -104,7 +112,7 @@ export default function InvoiceManagement({ onNavigate }) {
       </div>
 
       {/* Table card */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-gray-100">
           <div className="relative flex-1 min-w-[200px]">
@@ -120,7 +128,7 @@ export default function InvoiceManagement({ onNavigate }) {
 
           <button className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 text-gray-600 bg-white hover:bg-gray-50">
             <Calendar className="w-3.5 h-3.5" />
-            This month
+            All Time
           </button>
 
           <div className="flex items-center gap-1.5">
@@ -145,62 +153,86 @@ export default function InvoiceManagement({ onNavigate }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
-                <th className="px-4 py-2 font-medium">Invoice</th>
-                <th className="px-4 py-2 font-medium">Client</th>
-                <th className="px-4 py-2 font-medium">Date</th>
-                <th className="px-4 py-2 font-medium text-right">Subtotal</th>
-                <th className="px-4 py-2 font-medium text-right">Tax</th>
-                <th className="px-4 py-2 font-medium text-right">Total</th>
-                <th className="px-4 py-2 font-medium text-right">Status</th>
+                <th className="px-4 py-3 font-medium">Invoice</th>
+                <th className="px-4 py-3 font-medium">Client</th>
+                <th className="px-4 py-3 font-medium">Issued</th>
+                <th className="px-4 py-3 font-medium">Due (Net 30)</th>
+                <th className="px-4 py-3 font-medium text-right">Subtotal</th>
+                <th className="px-4 py-3 font-medium text-right">Tax</th>
+                <th className="px-4 py-3 font-medium text-right">Total</th>
+                <th className="px-4 py-3 font-medium text-right">Status</th>
+                <th className="px-4 py-3 font-medium text-right">Receipt</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-6 text-center text-gray-400 text-sm">
+                  <td colSpan={9} className="px-4 py-6 text-center text-gray-400 text-sm">
                     Loading invoices…
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-6 text-center text-gray-400 text-sm">
+                  <td colSpan={9} className="px-4 py-6 text-center text-gray-400 text-sm">
                     No invoices found.
                   </td>
                 </tr>
               ) : (
-                filtered.map((inv) => (
-                  <tr
-                    key={inv.id}
-                    className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60"
-                  >
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() => onNavigate("invoice-form")}
-                        className="text-indigo-600 font-medium hover:underline"
-                      >
-                        {inv.invoiceNo}
-                      </button>
-                    </td>
-                    <td className="px-4 py-3 text-gray-900">{inv.customer?.name || "—"}</td>
-                    <td className="px-4 py-3 text-gray-500">{formatDate(inv.date)}</td>
-                    <td className="px-4 py-3 text-right text-gray-700">
-                      {currency(inv.totalAmount - inv.tax)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-700">{currency(inv.tax)}</td>
-                    <td className="px-4 py-3 text-right text-gray-900 font-medium">
-                      {currency(inv.totalAmount)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <span
-                        className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${
-                          statusStyles[inv.paymentStatus] || "bg-gray-50 text-gray-600"
-                        }`}
-                      >
-                        {inv.paymentStatus.replace("_", " ")}
-                      </span>
-                    </td>
-                  </tr>
-                ))
+                filtered.map((inv) => {
+                  const status = inv.paymentStatus?.toUpperCase() || "PENDING";
+                  const invoiceSubtotal = (inv.totalAmount || 0) - (inv.tax || 0);
+
+                  return (
+                    <tr
+                      key={inv.id}
+                      className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60 transition"
+                    >
+                      <td className="px-4 py-3.5">
+                        <button
+                          onClick={() => onNavigate("invoice-form")}
+                          className="text-indigo-600 font-semibold hover:underline"
+                        >
+                          {inv.invoiceNo}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="font-medium text-gray-900">{inv.customer?.name || "—"}</div>
+                        {inv.customer?.company && (
+                          <div className="text-[11px] text-gray-400">{inv.customer.company}</div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3.5 text-gray-500">{formatDate(inv.date)}</td>
+                      <td className="px-4 py-3.5 text-gray-500">{getDueDateString(inv.date)}</td>
+                      <td className="px-4 py-3.5 text-right text-gray-700 font-medium">
+                        {currency(invoiceSubtotal)}
+                      </td>
+                      <td className="px-4 py-3.5 text-right text-gray-700">{currency(inv.tax)}</td>
+                      <td className="px-4 py-3.5 text-right text-gray-900 font-bold">
+                        {currency(inv.totalAmount)}
+                      </td>
+                      <td className="px-4 py-3.5 text-right">
+                        <span
+                          className={`inline-block text-xs font-semibold px-2.5 py-0.5 rounded-full ${
+                            statusStyles[status] || "bg-gray-50 text-gray-600"
+                          }`}
+                        >
+                          {status.replace("_", " ")}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5 text-right">
+                        {status === "PAID" && (
+                          <button
+                            onClick={() => onNavigate("print-receipt", { invoice: inv })}
+                            className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                            Receipt
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -217,9 +249,9 @@ export default function InvoiceManagement({ onNavigate }) {
 
 function SummaryCard({ label, value, valueColor }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-4">
+    <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
       <p className="text-sm text-gray-500">{label}</p>
-      <p className={`text-xl font-semibold mt-1 ${valueColor}`}>{value}</p>
+      <p className={`text-xl font-bold mt-1 ${valueColor}`}>{value}</p>
     </div>
   );
 }

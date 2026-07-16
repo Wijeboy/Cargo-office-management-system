@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { Toaster } from "react-hot-toast";
+
 
 // Auth pages
 import Login from "./pages/auth/Login";
@@ -39,17 +41,25 @@ import Footer from "./pages/finance/Footer";
 import FinanceDashboard from "./pages/finance/FinanceDashboard";
 import InvoiceManagement from "./pages/finance/InvoiceManagement";
 import GenerateInvoice from "./pages/finance/GenerateInvoice";
+import InvoiceDetail from "./pages/finance/InvoiceDetail";
 import PaymentManagement from "./pages/finance/PaymentManagement";
 import ExpenseManagement from "./pages/finance/ExpenseManagement";
 import AddExpense from "./pages/finance/AddExpense";
 import FinancialReports from "./pages/finance/FinancialReports";
+import PrintReceipt from "./pages/finance/PrintReceipt";
+
 
 // Other pages
-import WarehouseList from "./pages/warehouse/WarehouseList";
 import UserList from "./pages/users/UserList";
 import MyProfile from "./pages/profile/MyProfile";
 import PublicTrackCargo from "./pages/public/PublicTrackCargo";
 import NotFound from "./pages/NotFound";
+import AdminInventory from "../../admin/src/pages/Inventory";
+import AdminIncomingCargo from "../../admin/src/pages/IncomingCargo";
+import AdminOutgoingCargo from "../../admin/src/pages/OutgoingCargo";
+import AdminStorageAllocation from "../../admin/src/pages/StorageAllocation";
+import AdminDamageReport from "../../admin/src/pages/DamageReport";
+import "../../admin/src/styles/admin.css";
 
 // ─── Route Guards ─────────────────────────────────────────
 
@@ -108,30 +118,50 @@ function RootRedirect() {
 
 function FinancePortal() {
   const [page, setPage] = useState("dashboard");
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [selectedPayment, setSelectedPayment] = useState(null);
+
+  const navigateTo = (nextPage, payload = null) => {
+    if (payload?.invoice) {
+      setSelectedInvoice(payload.invoice);
+    } else if (payload && (payload.id || payload.invoiceNo)) {
+      setSelectedInvoice(payload);
+    }
+    if (payload?.payment) {
+      setSelectedPayment(payload.payment);
+    } else if (payload?.selectedPayment) {
+      setSelectedPayment(payload.selectedPayment);
+    }
+    setPage(nextPage);
+  };
 
   const renderPage = () => {
     switch (page) {
       case "invoices":
-        return <InvoiceManagement onNavigate={setPage} />;
+        return <InvoiceManagement onNavigate={navigateTo} />;
       case "invoice-form":
-        return <GenerateInvoice onNavigate={setPage} />;
+        return <GenerateInvoice onNavigate={navigateTo} />;
+      case "invoice-detail":
+        return <InvoiceDetail invoice={selectedInvoice} selectedPayment={selectedPayment} onNavigate={navigateTo} />;
+      case "print-receipt":
+        return <PrintReceipt invoice={selectedInvoice} payment={selectedPayment} onNavigate={navigateTo} />;
       case "payments":
-        return <PaymentManagement onNavigate={setPage} />;
+        return <PaymentManagement onNavigate={navigateTo} />;
       case "expenses":
-        return <ExpenseManagement onNavigate={setPage} />;
+        return <ExpenseManagement onNavigate={navigateTo} />;
       case "add-expense":
-        return <AddExpense onNavigate={setPage} />;
+        return <AddExpense onNavigate={navigateTo} />;
       case "reports":
-        return <FinancialReports onNavigate={setPage} />;
+        return <FinancialReports onNavigate={navigateTo} />;
       case "dashboard":
       default:
-        return <FinanceDashboard onNavigate={setPage} />;
+        return <FinanceDashboard onNavigate={navigateTo} />;
     }
   };
 
   return (
     <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans w-full">
-      <Sidebar activePage={page} onNavigate={setPage} />
+      <Sidebar activePage={page} onNavigate={navigateTo} />
       <div className="flex-1 min-w-0 flex flex-col min-h-screen">
         <Topbar />
         <div className="flex-1">{renderPage()}</div>
@@ -204,7 +234,12 @@ function AppRoutes() {
       <Route path="/reports" element={<ProtectedRoute allowedRoles={['ADMIN', 'OPERATIONS']}><DashboardLayout><OperationsReports /></DashboardLayout></ProtectedRoute>} />
       <Route path="/history" element={<ProtectedRoute allowedRoles={['ADMIN', 'OPERATIONS']}><DashboardLayout><ShipmentHistory /></DashboardLayout></ProtectedRoute>} />
       <Route path="/users" element={<ProtectedRoute allowedRoles={['ADMIN']}><DashboardLayout><UserList /></DashboardLayout></ProtectedRoute>} />
-      <Route path="/warehouse" element={<ProtectedRoute allowedRoles={['ADMIN', 'WAREHOUSE']}><DashboardLayout><WarehouseList /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/warehouse" element={<ProtectedRoute allowedRoles={['ADMIN', 'WAREHOUSE']}><DashboardLayout><AdminInventory /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/warehouse/inventory" element={<Navigate to="/warehouse" replace />} />
+      <Route path="/warehouse/incoming" element={<ProtectedRoute allowedRoles={['ADMIN', 'WAREHOUSE']}><DashboardLayout><AdminIncomingCargo /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/warehouse/outgoing" element={<ProtectedRoute allowedRoles={['ADMIN', 'WAREHOUSE']}><DashboardLayout><AdminOutgoingCargo /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/warehouse/storage" element={<ProtectedRoute allowedRoles={['ADMIN', 'WAREHOUSE']}><DashboardLayout><AdminStorageAllocation /></DashboardLayout></ProtectedRoute>} />
+      <Route path="/warehouse/damage-reports" element={<ProtectedRoute allowedRoles={['ADMIN', 'WAREHOUSE']}><DashboardLayout><AdminDamageReport /></DashboardLayout></ProtectedRoute>} />
 
       {/* Protected Customer Service routes (for Staff) */}
       <Route path="/customers" element={<ProtectedRoute allowedRoles={['ADMIN', 'CUSTOMER_SERVICE']}><CustomerServiceLayout><CustomerList /></CustomerServiceLayout></ProtectedRoute>} />
@@ -252,6 +287,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <AppRoutes />
+        <Toaster position="top-right" />
       </AuthProvider>
     </BrowserRouter>
   );

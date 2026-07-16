@@ -78,8 +78,6 @@ export default function GenerateInvoice({ onNavigate }) {
 
     setSubmitting(true);
     try {
-      // Store the line-item breakdown as JSON in `notes`, matching the
-      // convention already used by seeded invoices in the backend.
       const lineItemsJson = JSON.stringify(
         lines.map((l) => ({
           title: l.description,
@@ -108,7 +106,6 @@ export default function GenerateInvoice({ onNavigate }) {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      {/* Back + heading */}
       <button
         onClick={() => onNavigate("invoices")}
         className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4"
@@ -136,7 +133,6 @@ export default function GenerateInvoice({ onNavigate }) {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Shipment + customer + date */}
         <div className="bg-white border border-gray-200 rounded-xl p-5 grid sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2">
             <label className="block text-xs font-medium text-gray-500 mb-1">
@@ -183,7 +179,6 @@ export default function GenerateInvoice({ onNavigate }) {
           </div>
         </div>
 
-        {/* Line items */}
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
           <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
             <p className="text-sm font-semibold text-gray-900">Line items</p>
@@ -239,7 +234,6 @@ export default function GenerateInvoice({ onNavigate }) {
           </div>
         </div>
 
-        {/* Notes + totals */}
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="bg-white border border-gray-200 rounded-xl p-5">
             <label className="block text-xs font-medium text-gray-500 mb-1">
@@ -281,7 +275,6 @@ export default function GenerateInvoice({ onNavigate }) {
           </div>
         </div>
 
-        {/* Actions */}
         <div className="flex items-center justify-end gap-2">
           <button
             type="button"

@@ -31,6 +31,10 @@ export default function DashboardLayout({ children }) {
       return [
         ...items,
         { to: '/warehouse', icon: 'warehouse', label: 'Warehouse Log' },
+        { to: '/warehouse/incoming', icon: 'package_2', label: 'Incoming Cargo' },
+        { to: '/warehouse/outgoing', icon: 'local_shipping', label: 'Outgoing Cargo' },
+        { to: '/warehouse/storage', icon: 'grid_view', label: 'Storage Allocation' },
+        { to: '/warehouse/damage-reports', icon: 'warning', label: 'Damage/Lost Report' },
         { to: '/users', icon: 'manage_accounts', label: 'User Management' },
       ];
     }
@@ -38,6 +42,10 @@ export default function DashboardLayout({ children }) {
     if (user?.role === 'WAREHOUSE') {
       return [
         { to: '/warehouse', icon: 'warehouse', label: 'Warehouse Log' },
+        { to: '/warehouse/incoming', icon: 'package_2', label: 'Incoming Cargo' },
+        { to: '/warehouse/outgoing', icon: 'local_shipping', label: 'Outgoing Cargo' },
+        { to: '/warehouse/storage', icon: 'grid_view', label: 'Storage Allocation' },
+        { to: '/warehouse/damage-reports', icon: 'warning', label: 'Damage/Lost Report' },
         { to: '/track', icon: 'my_location', label: 'Cargo Tracking' },
       ];
     }
@@ -125,7 +133,8 @@ export default function DashboardLayout({ children }) {
           {navItems.map(item => {
             const active = location.pathname === item.to ||
               (item.to === '/cargo' && location.pathname === '/cargo') ||
-              (item.to !== '/dashboard' && item.to !== '/cargo' && location.pathname.startsWith(item.to));
+              (item.to === '/warehouse' && location.pathname === '/warehouse/inventory') ||
+              (item.to !== '/dashboard' && item.to !== '/cargo' && item.to !== '/warehouse' && location.pathname.startsWith(item.to));
             return (
               <Link
                 key={item.to}

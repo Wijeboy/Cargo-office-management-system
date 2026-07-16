@@ -5,7 +5,9 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
 import authRoutes from './src/routes/authRoutes.js';
+import cargoRoutes from './src/routes/cargoRoutes.js';
 import userRoutes from './src/routes/userRoutes.js';
+import warehouseRoutes from './src/routes/warehouseRoutes.js';
 import invoiceRoutes from './src/routes/invoiceRoutes.js';
 import paymentRoutes from './src/routes/paymentRoutes.js';
 import expenseRoutes from './src/routes/expenseRoutes.js';
@@ -34,12 +36,14 @@ app.use(cors({
   credentials: true
 }));
 app.use(morgan('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/warehouse', warehouseRoutes);
+app.use('/api/cargo', cargoRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/expenses', expenseRoutes);

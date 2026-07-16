@@ -7,6 +7,7 @@ import {
   createInvoice,
   updateInvoice,
   deleteInvoice,
+  getInvoiceReceipt,
 } from '../controllers/invoiceController.js';
 import { authenticateToken, requireRoles } from '../middleware/auth.js';
 
@@ -19,8 +20,9 @@ router.use(authenticateToken);
 router.get('/meta/options', getInvoiceFormOptions);
 
 router.get('/', getAllInvoices);
-router.get('/:id', getInvoiceById);
+router.get('/:id/receipt', getInvoiceReceipt);
 router.get('/no/:invoiceNo', getInvoiceByNo);
+router.get('/:id', getInvoiceById);
 
 // Only Admin and Finance can create/update/delete invoices
 router.post('/', requireRoles(['ADMIN', 'FINANCE']), createInvoice);

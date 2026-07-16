@@ -120,7 +120,7 @@ export default function FinanceDashboard({ onNavigate }) {
       </div>
 
       {/* Transactions */}
-      <TransactionsTable payments={dashboard?.recentPayments} />
+<TransactionsTable payments={dashboard?.recentPayments} onNavigate={onNavigate} />
     </div>
   );
 }
