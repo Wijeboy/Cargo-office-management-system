@@ -572,9 +572,6 @@ export async function verifyResetCode(req, res) {
   });
 }
 
-/**
- * Reset password using valid OTP code.
- */
 export async function resetPassword(req, res) {
   const { email, code, newPassword } = req.body;
 

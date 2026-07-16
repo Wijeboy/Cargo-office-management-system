@@ -126,7 +126,6 @@ async function main() {
   }
   console.log(' Assigned permissions to roles');
 
-  // Create Users
   console.log('Creating users...');
   const adminUser = await prisma.user.create({
     data: {
