@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-<<<<<<< HEAD
+
   console.log(' Starting database seeding...');
 
   // Clear existing data
@@ -461,7 +461,7 @@ async function main() {
   console.log('   Customer Service: cs@logiflow.com / cs123');
   console.log('   Warehouse: warehouse@logiflow.com / warehouse123');
   console.log('\n');
-=======
+
   console.log('Seeding database...');
   
   // Clear existing users to avoid unique constraint violations
@@ -521,22 +521,20 @@ async function main() {
   }
 
   console.log('Seeding completed successfully.');
->>>>>>> 39e42b38ca42cfbf8821c79b252ff8c42727cdde
+
 }
 
 main()
   .catch((e) => {
-<<<<<<< HEAD
+
     console.error(' Error seeding database:', e);
-=======
+
     console.error(e);
->>>>>>> 39e42b38ca42cfbf8821c79b252ff8c42727cdde
+
     process.exit(1);
   })
   .finally(async () => {
     await prisma.$disconnect();
-<<<<<<< HEAD
+ 
   });
-=======
-  });
->>>>>>> 39e42b38ca42cfbf8821c79b252ff8c42727cdde
+
