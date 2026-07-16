@@ -1,0 +1,238 @@
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { sendSuccess, sendError } from '../utils/response.js';
+
+const prisma = new PrismaClient();
+
+const generateTokens = (userId) => {
+  const accessToken = jwt.sign(
+    { userId },
+    process.env.JWT_SECRET,
+    { expiresIn: process.env.JWT_EXPIRES_IN || '1h' }
+  );
+
+  const refreshToken = jwt.sign(
+    { userId },
+    process.env.JWT_REFRESH_SECRET,
+    { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d' }
+  );
+
+  return { accessToken, refreshToken };
+};
+
+const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: {
+        role: {
+          include: {
+            permissions: {
+              include: {
+                permission: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      return sendError(res, 'Invalid credentials', 401);
+    }
+
+    if (!user.isActive) {
+      return sendError(res, 'Account is inactive', 403);
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return sendError(res, 'Invalid credentials', 401);
+    }
+
+    const { accessToken, refreshToken } = generateTokens(user.id);
+
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+    
+    await prisma.session.create({
+      data: {
+        userId: user.id,
+        refreshToken,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+        expiresAt,
+      },
+    });
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLogin: new Date() },
+    });
+
+    const userData = {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone,
+      avatar: user.avatar,
+      role: {
+        id: user.role.id,
+        name: user.role.name,
+        description: user.role.description,
+      },
+      permissions: user.role.permissions.map(rp => ({
+        id: rp.permission.id,
+        name: rp.permission.name,
+        resource: rp.permission.resource,
+        action: rp.permission.action,
+      })),
+    };
+
+    return sendSuccess(res, 'Login successful', {
+      user: userData,
+      accessToken,
+      refreshToken,
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    return sendError(res, 'Login failed');
+  }
+};
+
+const refreshToken = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return sendError(res, 'Refresh token required', 400);
+    }
+
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+
+    const session = await prisma.session.findUnique({
+      where: { refreshToken },
+      include: { user: true },
+    });
+
+    if (!session || session.expiresAt < new Date()) {
+      return sendError(res, 'Invalid or expired refresh token', 401);
+    }
+
+    const tokens = generateTokens(decoded.userId);
+
+    const newExpiresAt = new Date();
+    newExpiresAt.setDate(newExpiresAt.getDate() + 7);
+    
+    await prisma.session.update({
+      where: { id: session.id },
+      data: {
+        refreshToken: tokens.refreshToken,
+        expiresAt: newExpiresAt,
+      },
+    });
+
+    return sendSuccess(res, 'Token refreshed', tokens);
+  } catch (error) {
+    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+      return sendError(res, 'Invalid refresh token', 401);
+    }
+    return sendError(res, 'Token refresh failed');
+  }
+};
+
+const logout = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (refreshToken) {
+      await prisma.session.deleteMany({
+        where: { refreshToken },
+      });
+    }
+
+    return sendSuccess(res, 'Logout successful');
+  } catch (error) {
+    return sendError(res, 'Logout failed');
+  }
+};
+
+const getCurrentUser = async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: {
+        role: {
+          include: {
+            permissions: {
+              include: {
+                permission: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const userData = {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone,
+      avatar: user.avatar,
+      role: {
+        id: user.role.id,
+        name: user.role.name,
+        description: user.role.description,
+      },
+      permissions: user.role.permissions.map(rp => ({
+        id: rp.permission.id,
+        name: rp.permission.name,
+        resource: rp.permission.resource,
+        action: rp.permission.action,
+      })),
+    };
+
+    return sendSuccess(res, 'User data retrieved', userData);
+  } catch (error) {
+    return sendError(res, 'Failed to get user data');
+  }
+};
+
+const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+    });
+
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isPasswordValid) {
+      return sendError(res, 'Current password is incorrect', 400);
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: {
+        password: hashedPassword,
+        passwordChangedAt: new Date(),
+      },
+    });
+
+    return sendSuccess(res, 'Password changed successfully');
+  } catch (error) {
+    return sendError(res, 'Failed to change password');
+  }
+};
+
+export { login, refreshToken, logout, getCurrentUser, changePassword };
