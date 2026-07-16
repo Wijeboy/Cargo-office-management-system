@@ -1,50 +1,38 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MOCK_CUSTOMERS } from "../../data/mockData";
+import { apiRequest } from "../../services/api";
 
 const PAGE_SIZE = 5;
 
-const customerDefaults = [
-  {
-    customerId: "CUS-10021",
-    type: "Enterprise",
-    preferredChannel: "Email",
-    status: "Active",
-    openCases: 0,
-  },
-  {
-    customerId: "CUS-10022",
-    type: "Business",
-    preferredChannel: "SMS",
-    status: "Active",
-    openCases: 1,
-  },
-  {
-    customerId: "CUS-10023",
-    type: "Individual",
-    preferredChannel: "Email",
-    status: "Pending",
-    openCases: 0,
-  },
-  {
-    customerId: "CUS-10024",
-    type: "Enterprise",
-    preferredChannel: "Phone",
-    status: "Active",
-    openCases: 2,
-  },
-  {
-    customerId: "CUS-10025",
-    type: "Individual",
-    preferredChannel: "Email",
-    status: "Archived",
-    openCases: 0,
-  },
-];
+const emptyEditForm = {
+  firstName: "",
+  lastName: "",
+  customerType: "INDIVIDUAL",
+  company: "",
+  email: "",
+  contactNo: "",
+  alternativeNumber: "",
+  address: "",
+  city: "",
+  country: "Sri Lanka",
+  postalCode: "",
+  preferredChannel: "EMAIL",
+  status: "ACTIVE",
+};
+
+function formatEnum(value = "") {
+  return String(value)
+    .toLowerCase()
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
 
 function getInitials(name = "") {
   return name
-    .split(" ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
     .map((part) => part[0])
     .join("")
     .toUpperCase()
@@ -52,49 +40,168 @@ function getInitials(name = "") {
 }
 
 function statusClasses(status) {
-  switch (status) {
-    case "Active":
+  switch (String(status).toUpperCase()) {
+    case "ACTIVE":
       return "bg-emerald-100 text-emerald-700";
-    case "Pending":
+
+    case "PENDING":
       return "bg-amber-100 text-amber-700";
-    case "Archived":
+
+    case "ARCHIVED":
+    case "INACTIVE":
       return "bg-slate-200 text-slate-600";
+
     default:
       return "bg-slate-100 text-slate-600";
   }
 }
 
+function normaliseCustomer(customer) {
+  return {
+    ...customer,
+    id: customer.id,
+    customerId:
+      customer.customerCode ||
+      customer.customerId ||
+      customer.id ||
+      "Not assigned",
+
+    name:
+      customer.name ||
+      `${customer.firstName || ""} ${customer.lastName || ""}`.trim() ||
+      "Unnamed Customer",
+
+    firstName: customer.firstName || "",
+    lastName: customer.lastName || "",
+
+    type: formatEnum(
+      customer.customerType || customer.type || "INDIVIDUAL",
+    ),
+
+    rawCustomerType:
+      customer.customerType ||
+      customer.type?.toUpperCase() ||
+      "INDIVIDUAL",
+
+    preferredChannel: formatEnum(
+      customer.preferredChannel || "EMAIL",
+    ),
+
+    rawPreferredChannel:
+      customer.preferredChannel || "EMAIL",
+
+    status: formatEnum(customer.status || "ACTIVE"),
+    rawStatus: customer.status || "ACTIVE",
+
+    contactNo: customer.contactNo || "Not provided",
+    alternativeNumber: customer.alternativeNumber || "",
+    email: customer.email || "Not provided",
+    company: customer.company || "",
+    address: customer.address || "",
+    city: customer.city || "",
+    country: customer.country || "",
+    postalCode: customer.postalCode || "",
+
+    openCases:
+      Number(customer.openCases) ||
+      Number(customer._count?.complaints) ||
+      0,
+
+    registrationDate:
+      customer.registrationDate ||
+      customer.createdAt ||
+      null,
+  };
+}
+
 export default function CustomerList() {
   const navigate = useNavigate();
 
+  const [customers, setCustomers] = useState([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [typeFilter, setTypeFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
 
-  const customers = useMemo(
-    () =>
-      MOCK_CUSTOMERS.map((customer, index) => {
-        const defaults =
-          customerDefaults[index % customerDefaults.length];
+  const [loading, setLoading] = useState(true);
+  const [pageError, setPageError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
-        return {
-          ...customer,
-          customerId:
-            customer.customerId ||
-            customer.id ||
-            defaults.customerId,
-          type: customer.type || defaults.type,
-          preferredChannel:
-            customer.preferredChannel ||
-            defaults.preferredChannel,
-          status: customer.status || defaults.status,
-          openCases:
-            customer.openCases ?? defaults.openCases,
-        };
-      }),
-    []
-  );
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+
+  const [editForm, setEditForm] = useState(emptyEditForm);
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState("");
+
+  const loadCustomers = async () => {
+    setLoading(true);
+    setPageError("");
+
+    try {
+      const response = await apiRequest("/customers");
+
+      const customerList = Array.isArray(response.customers)
+        ? response.customers.map(normaliseCustomer)
+        : [];
+
+      setCustomers(customerList);
+    } catch (error) {
+      console.error("Failed to load customers:", error);
+
+      setPageError(
+        error.message ||
+          "Failed to load customers. Check whether the backend is running.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCustomers();
+  }, []);
+
+  useEffect(() => {
+    const totalPages = Math.max(
+      1,
+      Math.ceil(
+        customers.filter((customer) => {
+          const normalizedSearch = search.trim().toLowerCase();
+
+          const matchesSearch =
+            !normalizedSearch ||
+            customer.name.toLowerCase().includes(normalizedSearch) ||
+            customer.email.toLowerCase().includes(normalizedSearch) ||
+            customer.contactNo.toLowerCase().includes(normalizedSearch) ||
+            customer.customerId
+              .toLowerCase()
+              .includes(normalizedSearch);
+
+          const matchesStatus =
+            statusFilter === "All" ||
+            customer.status === statusFilter;
+
+          const matchesType =
+            typeFilter === "All" ||
+            customer.type === typeFilter;
+
+          return matchesSearch && matchesStatus && matchesType;
+        }).length / PAGE_SIZE,
+      ),
+    );
+
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [
+    customers,
+    search,
+    statusFilter,
+    typeFilter,
+    currentPage,
+  ]);
 
   const filteredCustomers = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -102,14 +209,10 @@ export default function CustomerList() {
     return customers.filter((customer) => {
       const matchesSearch =
         !normalizedSearch ||
-        customer.name?.toLowerCase().includes(normalizedSearch) ||
-        customer.email?.toLowerCase().includes(normalizedSearch) ||
-        customer.contactNo
-          ?.toLowerCase()
-          .includes(normalizedSearch) ||
-        customer.customerId
-          ?.toLowerCase()
-          .includes(normalizedSearch);
+        customer.name.toLowerCase().includes(normalizedSearch) ||
+        customer.email.toLowerCase().includes(normalizedSearch) ||
+        customer.contactNo.toLowerCase().includes(normalizedSearch) ||
+        customer.customerId.toLowerCase().includes(normalizedSearch);
 
       const matchesStatus =
         statusFilter === "All" ||
@@ -125,13 +228,50 @@ export default function CustomerList() {
 
   const totalPages = Math.max(
     1,
-    Math.ceil(filteredCustomers.length / PAGE_SIZE)
+    Math.ceil(filteredCustomers.length / PAGE_SIZE),
   );
 
   const visibleCustomers = filteredCustomers.slice(
     (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
+    currentPage * PAGE_SIZE,
   );
+
+  const statistics = useMemo(() => {
+    const currentDate = new Date();
+
+    const newThisMonth = customers.filter((customer) => {
+      if (!customer.registrationDate) {
+        return false;
+      }
+
+      const registrationDate = new Date(
+        customer.registrationDate,
+      );
+
+      return (
+        registrationDate.getMonth() ===
+          currentDate.getMonth() &&
+        registrationDate.getFullYear() ===
+          currentDate.getFullYear()
+      );
+    }).length;
+
+    return {
+      total: customers.length,
+
+      active: customers.filter(
+        (customer) =>
+          String(customer.rawStatus).toUpperCase() === "ACTIVE",
+      ).length,
+
+      newThisMonth,
+
+      openComplaints: customers.reduce(
+        (total, customer) => total + customer.openCases,
+        0,
+      ),
+    };
+  }, [customers]);
 
   const handleSearch = (event) => {
     setSearch(event.target.value);
@@ -146,6 +286,134 @@ export default function CustomerList() {
   const handleTypeFilter = (event) => {
     setTypeFilter(event.target.value);
     setCurrentPage(1);
+  };
+
+  const openViewModal = (customer) => {
+    setSelectedCustomer(customer);
+    setViewModalOpen(true);
+  };
+
+  const openEditModal = (customer) => {
+    setSelectedCustomer(customer);
+
+    setEditForm({
+      firstName: customer.firstName,
+      lastName: customer.lastName,
+      customerType: customer.rawCustomerType,
+      company: customer.company,
+      email: customer.email,
+      contactNo:
+        customer.contactNo === "Not provided"
+          ? ""
+          : customer.contactNo,
+      alternativeNumber: customer.alternativeNumber,
+      address: customer.address,
+      city: customer.city,
+      country: customer.country || "Sri Lanka",
+      postalCode: customer.postalCode,
+      preferredChannel: customer.rawPreferredChannel,
+      status: customer.rawStatus,
+    });
+
+    setEditModalOpen(true);
+  };
+
+  const handleEditChange = (event) => {
+    const { name, value } = event.target;
+
+    setEditForm((current) => ({
+      ...current,
+      [name]: value,
+    }));
+  };
+
+  const handleUpdateCustomer = async (event) => {
+    event.preventDefault();
+
+    if (!selectedCustomer?.id) {
+      return;
+    }
+
+    setSaving(true);
+    setPageError("");
+    setSuccessMessage("");
+
+    const updateData = {
+      firstName: editForm.firstName.trim(),
+      lastName: editForm.lastName.trim(),
+      customerType: editForm.customerType,
+      company: editForm.company.trim() || null,
+      email: editForm.email.trim(),
+      contactNo: editForm.contactNo.trim(),
+      alternativeNumber:
+        editForm.alternativeNumber.trim() || null,
+      address: editForm.address.trim(),
+      city: editForm.city.trim(),
+      country: editForm.country.trim(),
+      postalCode: editForm.postalCode.trim() || null,
+      preferredChannel: editForm.preferredChannel,
+      status: editForm.status,
+    };
+
+    try {
+      await apiRequest(`/customers/${selectedCustomer.id}`, {
+        method: "PUT",
+        body: JSON.stringify(updateData),
+      });
+
+      setSuccessMessage("Customer updated successfully.");
+      setEditModalOpen(false);
+      setSelectedCustomer(null);
+
+      await loadCustomers();
+    } catch (error) {
+      console.error("Failed to update customer:", error);
+
+      setPageError(
+        error.message || "Failed to update customer.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteCustomer = async (customer) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${customer.name}"?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingId(customer.id);
+    setPageError("");
+    setSuccessMessage("");
+
+    try {
+      await apiRequest(`/customers/${customer.id}`, {
+        method: "DELETE",
+      });
+
+      setCustomers((currentCustomers) =>
+        currentCustomers.filter(
+          (currentCustomer) =>
+            currentCustomer.id !== customer.id,
+        ),
+      );
+
+      setSuccessMessage(
+        `${customer.name} was deleted successfully.`,
+      );
+    } catch (error) {
+      console.error("Failed to delete customer:", error);
+
+      setPageError(
+        error.message || "Failed to delete customer.",
+      );
+    } finally {
+      setDeletingId("");
+    }
   };
 
   const exportCustomers = () => {
@@ -176,9 +444,9 @@ export default function CustomerList() {
         row
           .map(
             (value) =>
-              `"${String(value ?? "").replaceAll('"', '""')}"`
+              `"${String(value ?? "").replaceAll('"', '""')}"`,
           )
-          .join(",")
+          .join(","),
       )
       .join("\n");
 
@@ -191,7 +459,10 @@ export default function CustomerList() {
 
     link.href = url;
     link.download = "customers.csv";
+
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
 
     URL.revokeObjectURL(url);
   };
@@ -220,37 +491,52 @@ export default function CustomerList() {
         </button>
       </div>
 
+      {successMessage && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+          {successMessage}
+        </div>
+      )}
+
+      {pageError && (
+        <div className="flex flex-col gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 sm:flex-row sm:items-center sm:justify-between">
+          <span>{pageError}</span>
+
+          <button
+            type="button"
+            onClick={loadCustomers}
+            className="w-fit rounded-lg border border-rose-300 bg-white px-3 py-1.5 font-semibold hover:bg-rose-100"
+          >
+            Try Again
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           icon="group"
           label="Total Customers"
-          value="2,486"
-          trend="+8.4%"
+          value={statistics.total}
           iconClasses="bg-blue-100 text-blue-700"
         />
 
         <StatCard
           icon="check"
           label="Active Customers"
-          value="2,214"
-          trend="+5.1%"
+          value={statistics.active}
           iconClasses="bg-emerald-100 text-emerald-700"
         />
 
         <StatCard
           icon="schedule"
           label="New This Month"
-          value="128"
-          trend="+12.7%"
+          value={statistics.newThisMonth}
           iconClasses="bg-amber-100 text-amber-700"
         />
 
         <StatCard
           icon="priority_high"
           label="Open Complaints"
-          value="34"
-          trend="-3.2%"
-          negative
+          value={statistics.openComplaints}
           iconClasses="bg-rose-100 text-rose-700"
         />
       </div>
@@ -296,14 +582,15 @@ export default function CustomerList() {
           <button
             type="button"
             onClick={exportCustomers}
-            className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            disabled={filteredCustomers.length === 0}
+            className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Export CSV
           </button>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1050px] border-collapse">
+          <table className="w-full min-w-[1120px] border-collapse">
             <thead className="bg-slate-50">
               <tr>
                 {[
@@ -327,117 +614,150 @@ export default function CustomerList() {
             </thead>
 
             <tbody>
-              {visibleCustomers.map((customer, index) => (
-                <tr
-                  key={customer.id || customer.customerId}
-                  className="border-b border-slate-200 last:border-0 hover:bg-slate-50"
-                >
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
-                          index % 4 === 0
-                            ? "bg-blue-100 text-blue-700"
-                            : index % 4 === 1
-                              ? "bg-violet-100 text-violet-700"
-                              : index % 4 === 2
-                                ? "bg-orange-100 text-orange-700"
-                                : "bg-emerald-100 text-emerald-700"
-                        }`}
-                      >
-                        {getInitials(customer.name)}
-                      </div>
-
-                      <div className="min-w-0">
-                        <p className="font-semibold text-slate-900">
-                          {customer.name}
-                        </p>
-
-                        <p className="truncate text-xs text-slate-500">
-                          {customer.email}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-
-                  <td className="px-5 py-4 text-sm text-slate-700">
-                    #{customer.customerId}
-                  </td>
-
-                  <td className="px-5 py-4 text-sm text-slate-700">
-                    {customer.type}
-                  </td>
-
-                  <td className="px-5 py-4 text-sm text-slate-700">
-                    {customer.contactNo}
-                  </td>
-
-                  <td className="px-5 py-4 text-sm text-slate-700">
-                    {customer.preferredChannel}
-                  </td>
-
-                  <td className="px-5 py-4">
-                    <span
-                      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${statusClasses(
-                        customer.status
-                      )}`}
-                    >
-                      <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                      {customer.status}
-                    </span>
-                  </td>
-
-                  <td className="px-5 py-4 text-sm text-slate-700">
-                    {customer.openCases > 1 ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700">
-                        <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                        {customer.openCases} open
-                      </span>
-                    ) : (
-                      customer.openCases
-                    )}
-                  </td>
-
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                      >
-                        View
-                      </button>
-
-                      <button
-                        type="button"
-                        className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                      >
-                        Edit
-                      </button>
-
-                      <button
-                        type="button"
-                        aria-label="More actions"
-                        className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
-                      >
-                        <span className="material-symbols-outlined text-lg">
-                          more_vert
-                        </span>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-
-              {visibleCustomers.length === 0 && (
+              {loading && (
                 <tr>
                   <td
                     colSpan="8"
-                    className="px-5 py-12 text-center text-sm text-slate-500"
+                    className="px-5 py-14 text-center"
                   >
-                    No customers found.
+                    <div className="flex flex-col items-center gap-3 text-slate-500">
+                      <span className="material-symbols-outlined animate-spin text-3xl text-sky-600">
+                        progress_activity
+                      </span>
+
+                      <span className="text-sm font-medium">
+                        Loading customers...
+                      </span>
+                    </div>
                   </td>
                 </tr>
               )}
+
+              {!loading &&
+                visibleCustomers.map((customer, index) => (
+                  <tr
+                    key={customer.id}
+                    className="border-b border-slate-200 last:border-0 hover:bg-slate-50"
+                  >
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+                            index % 4 === 0
+                              ? "bg-blue-100 text-blue-700"
+                              : index % 4 === 1
+                                ? "bg-violet-100 text-violet-700"
+                                : index % 4 === 2
+                                  ? "bg-orange-100 text-orange-700"
+                                  : "bg-emerald-100 text-emerald-700"
+                          }`}
+                        >
+                          {getInitials(customer.name)}
+                        </div>
+
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-900">
+                            {customer.name}
+                          </p>
+
+                          <p className="max-w-[220px] truncate text-xs text-slate-500">
+                            {customer.email}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className="px-5 py-4 text-sm text-slate-700">
+                      #{customer.customerId}
+                    </td>
+
+                    <td className="px-5 py-4 text-sm text-slate-700">
+                      {customer.type}
+                    </td>
+
+                    <td className="px-5 py-4 text-sm text-slate-700">
+                      {customer.contactNo}
+                    </td>
+
+                    <td className="px-5 py-4 text-sm text-slate-700">
+                      {customer.preferredChannel}
+                    </td>
+
+                    <td className="px-5 py-4">
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${statusClasses(
+                          customer.rawStatus,
+                        )}`}
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                        {customer.status}
+                      </span>
+                    </td>
+
+                    <td className="px-5 py-4 text-sm text-slate-700">
+                      {customer.openCases > 0 ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700">
+                          <span className="h-1.5 w-1.5 rounded-full bg-current" />
+
+                          {customer.openCases} open
+                        </span>
+                      ) : (
+                        0
+                      )}
+                    </td>
+
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            openViewModal(customer)
+                          }
+                          className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        >
+                          View
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            openEditModal(customer)
+                          }
+                          className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={
+                            deletingId === customer.id
+                          }
+                          onClick={() =>
+                            handleDeleteCustomer(customer)
+                          }
+                          className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {deletingId === customer.id
+                            ? "Deleting..."
+                            : "Delete"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+
+              {!loading &&
+                visibleCustomers.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan="8"
+                      className="px-5 py-12 text-center text-sm text-slate-500"
+                    >
+                      No customers found.
+                    </td>
+                  </tr>
+                )}
             </tbody>
           </table>
         </div>
@@ -451,7 +771,7 @@ export default function CustomerList() {
             –
             {Math.min(
               currentPage * PAGE_SIZE,
-              filteredCustomers.length
+              filteredCustomers.length,
             )}{" "}
             of {filteredCustomers.length} customers
           </p>
@@ -461,7 +781,9 @@ export default function CustomerList() {
               type="button"
               disabled={currentPage === 1}
               onClick={() =>
-                setCurrentPage((page) => Math.max(1, page - 1))
+                setCurrentPage((page) =>
+                  Math.max(1, page - 1),
+                )
               }
               className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
             >
@@ -470,7 +792,7 @@ export default function CustomerList() {
 
             {Array.from(
               { length: Math.min(totalPages, 3) },
-              (_, index) => index + 1
+              (_, index) => index + 1,
             ).map((page) => (
               <button
                 type="button"
@@ -491,7 +813,7 @@ export default function CustomerList() {
               disabled={currentPage === totalPages}
               onClick={() =>
                 setCurrentPage((page) =>
-                  Math.min(totalPages, page + 1)
+                  Math.min(totalPages, page + 1),
                 )
               }
               className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
@@ -511,43 +833,378 @@ export default function CustomerList() {
           <a href="#">Terms of Service</a>
         </div>
       </footer>
+
+      {viewModalOpen && selectedCustomer && (
+        <CustomerDetailsModal
+          customer={selectedCustomer}
+          onClose={() => {
+            setViewModalOpen(false);
+            setSelectedCustomer(null);
+          }}
+        />
+      )}
+
+      {editModalOpen && selectedCustomer && (
+        <EditCustomerModal
+          form={editForm}
+          saving={saving}
+          onChange={handleEditChange}
+          onSubmit={handleUpdateCustomer}
+          onClose={() => {
+            if (!saving) {
+              setEditModalOpen(false);
+              setSelectedCustomer(null);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
 
-function StatCard({
-  icon,
-  label,
-  value,
-  trend,
-  negative = false,
-  iconClasses,
+function CustomerDetailsModal({ customer, onClose }) {
+  return (
+    <Modal
+      title="Customer Details"
+      subtitle={`Customer ID: ${customer.customerId}`}
+      onClose={onClose}
+    >
+      <div className="grid gap-4 sm:grid-cols-2">
+        <DetailItem label="Full Name" value={customer.name} />
+
+        <DetailItem
+          label="Customer Type"
+          value={customer.type}
+        />
+
+        <DetailItem label="Email" value={customer.email} />
+
+        <DetailItem
+          label="Contact Number"
+          value={customer.contactNo}
+        />
+
+        <DetailItem
+          label="Alternative Number"
+          value={customer.alternativeNumber || "Not provided"}
+        />
+
+        <DetailItem
+          label="Preferred Channel"
+          value={customer.preferredChannel}
+        />
+
+        <DetailItem label="Status" value={customer.status} />
+
+        <DetailItem
+          label="Company"
+          value={customer.company || "Not provided"}
+        />
+
+        <DetailItem
+          label="Address"
+          value={
+            [
+              customer.address,
+              customer.city,
+              customer.postalCode,
+              customer.country,
+            ]
+              .filter(Boolean)
+              .join(", ") || "Not provided"
+          }
+          fullWidth
+        />
+
+        <DetailItem
+          label="Open Complaints"
+          value={customer.openCases}
+        />
+      </div>
+
+      <div className="mt-6 flex justify-end">
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
+        >
+          Close
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+function EditCustomerModal({
+  form,
+  saving,
+  onChange,
+  onSubmit,
+  onClose,
 }) {
   return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-start justify-between">
-        <div
-          className={`flex h-11 w-11 items-center justify-center rounded-xl ${iconClasses}`}
-        >
-          <span className="material-symbols-outlined block text-[20px] leading-none">
-            {icon}
-          </span>
+    <Modal
+      title="Edit Customer"
+      subtitle="Update the customer profile information."
+      onClose={onClose}
+    >
+      <form onSubmit={onSubmit}>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <EditField label="First Name" required>
+            <input
+              name="firstName"
+              value={form.firstName}
+              onChange={onChange}
+              className="form-input"
+              required
+            />
+          </EditField>
+
+          <EditField label="Last Name" required>
+            <input
+              name="lastName"
+              value={form.lastName}
+              onChange={onChange}
+              className="form-input"
+              required
+            />
+          </EditField>
+
+          <EditField label="Customer Type" required>
+            <select
+              name="customerType"
+              value={form.customerType}
+              onChange={onChange}
+              className="form-input"
+              required
+            >
+              <option value="INDIVIDUAL">Individual</option>
+              <option value="BUSINESS">Business</option>
+              <option value="ENTERPRISE">Enterprise</option>
+            </select>
+          </EditField>
+
+          <EditField label="Company">
+            <input
+              name="company"
+              value={form.company}
+              onChange={onChange}
+              className="form-input"
+            />
+          </EditField>
+
+          <EditField label="Email" required>
+            <input
+              type="email"
+              name="email"
+              value={form.email}
+              onChange={onChange}
+              className="form-input"
+              required
+            />
+          </EditField>
+
+          <EditField label="Contact Number" required>
+            <input
+              name="contactNo"
+              value={form.contactNo}
+              onChange={onChange}
+              className="form-input"
+              required
+            />
+          </EditField>
+
+          <EditField label="Alternative Number">
+            <input
+              name="alternativeNumber"
+              value={form.alternativeNumber}
+              onChange={onChange}
+              className="form-input"
+            />
+          </EditField>
+
+          <EditField label="Preferred Channel" required>
+            <select
+              name="preferredChannel"
+              value={form.preferredChannel}
+              onChange={onChange}
+              className="form-input"
+              required
+            >
+              <option value="EMAIL">Email</option>
+              <option value="SMS">SMS</option>
+              <option value="PHONE">Phone</option>
+              <option value="IN_SYSTEM">In-system</option>
+            </select>
+          </EditField>
+
+          <div className="sm:col-span-2">
+            <EditField label="Address" required>
+              <input
+                name="address"
+                value={form.address}
+                onChange={onChange}
+                className="form-input"
+                required
+              />
+            </EditField>
+          </div>
+
+          <EditField label="City" required>
+            <input
+              name="city"
+              value={form.city}
+              onChange={onChange}
+              className="form-input"
+              required
+            />
+          </EditField>
+
+          <EditField label="Country" required>
+            <input
+              name="country"
+              value={form.country}
+              onChange={onChange}
+              className="form-input"
+              required
+            />
+          </EditField>
+
+          <EditField label="Postal Code">
+            <input
+              name="postalCode"
+              value={form.postalCode}
+              onChange={onChange}
+              className="form-input"
+            />
+          </EditField>
+
+          <EditField label="Account Status" required>
+            <select
+              name="status"
+              value={form.status}
+              onChange={onChange}
+              className="form-input"
+              required
+            >
+              <option value="ACTIVE">Active</option>
+              <option value="PENDING">Pending</option>
+              <option value="ARCHIVED">Archived</option>
+            </select>
+          </EditField>
         </div>
 
-        <span
-          className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-            negative
-              ? "bg-rose-100 text-rose-600"
-              : "bg-emerald-100 text-emerald-600"
-          }`}
-        >
-          {trend}
+        <div className="mt-6 flex justify-end gap-3 border-t border-slate-200 pt-5">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="rounded-xl bg-slate-950 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function Modal({ title, subtitle, children, onClose }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <section className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <div className="flex items-start justify-between border-b border-slate-200 px-6 py-5">
+          <div>
+            <h2 className="text-xl font-bold text-slate-900">
+              {title}
+            </h2>
+
+            {subtitle && (
+              <p className="mt-1 text-sm text-slate-500">
+                {subtitle}
+              </p>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+            aria-label="Close modal"
+          >
+            <span className="material-symbols-outlined">
+              close
+            </span>
+          </button>
+        </div>
+
+        <div className="p-6">{children}</div>
+      </section>
+    </div>
+  );
+}
+
+function DetailItem({ label, value, fullWidth = false }) {
+  return (
+    <div
+      className={`rounded-xl border border-slate-200 bg-slate-50 p-4 ${
+        fullWidth ? "sm:col-span-2" : ""
+      }`}
+    >
+      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+
+      <p className="mt-2 break-words text-sm font-semibold text-slate-800">
+        {value ?? "Not provided"}
+      </p>
+    </div>
+  );
+}
+
+function EditField({ label, required = false, children }) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-semibold text-slate-700">
+        {label}
+
+        {required && (
+          <span className="ml-1 text-rose-500">*</span>
+        )}
+      </span>
+
+      {children}
+    </label>
+  );
+}
+
+function StatCard({ icon, label, value, iconClasses }) {
+  return (
+    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div
+        className={`flex h-11 w-11 items-center justify-center rounded-xl ${iconClasses}`}
+      >
+        <span className="material-symbols-outlined block text-[20px] leading-none">
+          {icon}
         </span>
       </div>
 
-      <p className="mt-3 text-sm text-slate-500">
-        {label}
-      </p>
+      <p className="mt-3 text-sm text-slate-500">{label}</p>
 
       <p className="mt-1 text-3xl font-bold text-slate-900">
         {value}

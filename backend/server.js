@@ -4,15 +4,23 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
+
 import authRoutes from './src/routes/authRoutes.js';
 import cargoRoutes from './src/routes/cargoRoutes.js';
 import userRoutes from './src/routes/userRoutes.js';
+
 import warehouseRoutes from './src/routes/warehouseRoutes.js';
 import invoiceRoutes from './src/routes/invoiceRoutes.js';
 import paymentRoutes from './src/routes/paymentRoutes.js';
 import expenseRoutes from './src/routes/expenseRoutes.js';
 import financeRoutes from './src/routes/financeRoutes.js';
 
+import customerRoutes from './src/routes/customerRoutes.js';
+import inquiryRoutes from './src/routes/inquiryRoutes.js';
+import complaintRoutes from './src/routes/complaintRoutes.js';
+import feedbackRoutes from './src/routes/feedbackRoutes.js';
+import notificationRoutes from './src/routes/notificationRoutes.js';
+import dashboardRoutes from './src/routes/dashboardRoutes.js';
 
 // Load environment variables
 dotenv.config();
@@ -25,19 +33,32 @@ const prisma = new PrismaClient();
 
 // Middleware
 app.use(helmet());
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true
-}));
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (
+        !origin ||
+        origin.startsWith('http://localhost:') ||
+        origin.startsWith('http://127.0.0.1:')
+      ) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+  }),
+);
+
 app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use(
+  express.urlencoded({
+    limit: '10mb',
+    extended: true,
+  }),
+);
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -49,48 +70,59 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/finance', financeRoutes);
 
+app.use('/api/customers', customerRoutes);
+app.use('/api/inquiries', inquiryRoutes);
+app.use('/api/complaints', complaintRoutes);
+app.use('/api/feedback', feedbackRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+
 // Health check route
 app.get('/api/health', async (req, res) => {
   try {
-    // Basic DB check
     await prisma.$queryRaw`SELECT 1`;
-    res.json({
+
+    return res.json({
       status: 'OK',
-      message: 'LogiFlow Cargo Management API is running and database is connected.',
-      timestamp: new Date()
+      message:
+        'LogiFlow Cargo Management API is running and database is connected.',
+      timestamp: new Date(),
     });
   } catch (error) {
-    res.status(500).json({
+    console.error('Health check error:', error);
+
+    return res.status(500).json({
       status: 'ERROR',
       message: 'API is running but database connection failed.',
-      error: error.message
+      error: error.message,
     });
   }
 });
 
 // Root route
 app.get('/', (req, res) => {
-  res.json({
-    message: 'Welcome to LogiFlow Cargo Office Management API'
+  return res.json({
+    message: 'Welcome to LogiFlow Cargo Office Management API',
   });
 });
 
 // 404 handler
-app.use((req, res, next) => {
-  res.status(404).json({
+app.use((req, res) => {
+  return res.status(404).json({
     status: 404,
     error: 'Not Found',
-    message: `Cannot ${req.method} ${req.url}`
+    message: `Cannot ${req.method} ${req.originalUrl}`,
   });
 });
 
 // Global error handler
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(err.status || 500).json({
+  console.error(err.stack || err);
+
+  return res.status(err.status || 500).json({
     status: err.status || 500,
     error: err.name || 'Internal Server Error',
-    message: err.message || 'An unexpected error occurred'
+    message: err.message || 'An unexpected error occurred',
   });
 });
 
@@ -98,15 +130,20 @@ app.use((err, req, res, next) => {
 const server = app.listen(port, () => {
   console.log(`🚀 Server is running on port ${port}`);
   console.log(`👉 Health check: http://localhost:${port}/api/health`);
+  console.log(`👉 Customer API: http://localhost:${port}/api/customers`);
 });
 
 // Handle graceful shutdown
 const gracefulShutdown = async () => {
   console.log('Shutting down server gracefully...');
+
   server.close(async () => {
     console.log('HTTP server closed.');
+
     await prisma.$disconnect();
+
     console.log('Prisma Client disconnected.');
+
     process.exit(0);
   });
 };

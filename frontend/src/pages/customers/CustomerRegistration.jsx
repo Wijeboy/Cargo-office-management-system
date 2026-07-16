@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { apiRequest } from "../../services/api";
 
 const initialForm = {
   firstName: "",
@@ -21,6 +22,9 @@ const initialForm = {
 
 export default function CustomerRegistration() {
   const [form, setForm] = useState(initialForm);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   const fullName =
     `${form.firstName} ${form.lastName}`.trim() || "New Customer";
@@ -35,16 +39,71 @@ export default function CustomerRegistration() {
       ...current,
       [name]: value,
     }));
+
+    if (successMessage) {
+      setSuccessMessage("");
+    }
+
+    if (errorMessage) {
+      setErrorMessage("");
+    }
   };
 
   const clearForm = () => {
     setForm(initialForm);
+    setSuccessMessage("");
+    setErrorMessage("");
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
-    alert(`Customer "${fullName}" registered successfully.`);
+    setIsSubmitting(true);
+    setSuccessMessage("");
+    setErrorMessage("");
+
+    const customerData = {
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
+      customerType: form.customerType.toUpperCase(),
+      company: form.companyName.trim() || null,
+      email: form.email.trim(),
+      contactNo: form.contactNumber.trim(),
+      alternativeNumber: form.alternativeNumber.trim() || null,
+      country: form.country,
+      address: form.streetAddress.trim(),
+      city: form.city.trim(),
+      postalCode: form.postalCode.trim() || null,
+      preferredChannel: form.preferredChannel
+        .replace("-", "_")
+        .toUpperCase(),
+      status: form.accountStatus.toUpperCase(),
+    };
+
+    try {
+      const response = await apiRequest("/customers/register", {
+        method: "POST",
+        body: JSON.stringify(customerData),
+      });
+
+      const registeredCustomer = response.customer;
+
+      setSuccessMessage(
+        registeredCustomer?.customerCode
+          ? `${registeredCustomer.name || fullName} was registered successfully. Customer code: ${registeredCustomer.customerCode}`
+          : `${fullName} was registered successfully.`,
+      );
+
+      setForm(initialForm);
+    } catch (error) {
+      console.error("Customer registration failed:", error);
+
+      setErrorMessage(
+        error.message || "Customer registration failed. Please try again.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -65,6 +124,18 @@ export default function CustomerRegistration() {
         <p className="mt-1 text-sm text-slate-500">
           Create a new customer profile and define communication preferences.
         </p>
+
+        {successMessage && (
+          <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+            {successMessage}
+          </div>
+        )}
+
+        {errorMessage && (
+          <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+            {errorMessage}
+          </div>
+        )}
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_260px]">
@@ -319,16 +390,18 @@ export default function CustomerRegistration() {
             <button
               type="button"
               onClick={clearForm}
-              className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+              disabled={isSubmitting}
+              className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Clear Form
             </button>
 
             <button
               type="submit"
-              className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-slate-800"
+              disabled={isSubmitting}
+              className="rounded-xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Register Customer
+              {isSubmitting ? "Registering..." : "Register Customer"}
             </button>
           </div>
         </form>
