@@ -31,15 +31,17 @@ export function StatCard({ icon: Icon, iconBg, iconColor, trend, trendUp, label,
         >
           <Icon className="w-4 h-4" />
         </div>
-        <span
-          className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-            trendUp
-              ? "bg-emerald-50 text-emerald-600"
-              : "bg-rose-50 text-rose-600"
-          }`}
-        >
-          {trend}
-        </span>
+        {trend && (
+          <span
+            className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+              trendUp
+                ? "bg-emerald-50 text-emerald-600"
+                : "bg-rose-50 text-rose-600"
+            }`}
+          >
+            {trend}
+          </span>
+        )}
       </div>
       <p className="text-sm text-gray-500">{label}</p>
       <p className="text-xl font-semibold text-gray-900 mt-0.5">{value}</p>

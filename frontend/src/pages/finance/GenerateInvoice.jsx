@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { ArrowLeft, Plus, Trash2, Send, Save } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { ArrowLeft, Plus, Trash2, Send } from "lucide-react";
+import { getInvoiceFormOptions, createInvoice } from "../../api/financeApi";
 
 const emptyLine = () => ({
   id: crypto.randomUUID ? crypto.randomUUID() : String(Math.random()),
@@ -9,13 +10,42 @@ const emptyLine = () => ({
 });
 
 export default function GenerateInvoice({ onNavigate }) {
-  const [client, setClient] = useState("");
-  const [invoiceNumber] = useState("INV-1043");
+  const [shipmentId, setShipmentId] = useState("");
+  const [shipments, setShipments] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [optionsLoading, setOptionsLoading] = useState(true);
+  const [optionsError, setOptionsError] = useState(null);
+
   const [issueDate, setIssueDate] = useState("");
-  const [dueDate, setDueDate] = useState("");
   const [lines, setLines] = useState([emptyLine()]);
   const [notes, setNotes] = useState("");
   const [taxRate, setTaxRate] = useState(8);
+
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    getInvoiceFormOptions()
+      .then((res) => {
+        if (isMounted) {
+          setShipments(res.shipments || []);
+          setCustomers(res.customers || []);
+        }
+      })
+      .catch((err) => {
+        if (isMounted) setOptionsError(err.message);
+      })
+      .finally(() => {
+        if (isMounted) setOptionsLoading(false);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const selectedShipment = shipments.find((s) => s.id === shipmentId);
+  const selectedCustomer = customers.find((c) => c.id === selectedShipment?.customerId);
 
   const updateLine = (id, field, value) => {
     setLines((prev) =>
@@ -37,11 +67,43 @@ export default function GenerateInvoice({ onNavigate }) {
   const currency = (n) =>
     n.toLocaleString(undefined, { style: "currency", currency: "USD" });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Hook up to your API here
-    alert(`Invoice ${invoiceNumber} for "${client || "unnamed client"}" created — total ${currency(total)}`);
-    onNavigate("invoices");
+    setSubmitError(null);
+
+    if (!shipmentId || !selectedShipment) {
+      setSubmitError("Please select a shipment.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      // Store the line-item breakdown as JSON in `notes`, matching the
+      // convention already used by seeded invoices in the backend.
+      const lineItemsJson = JSON.stringify(
+        lines.map((l) => ({
+          title: l.description,
+          quantity: Number(l.qty) || 0,
+          rate: Number(l.rate) || 0,
+          amount: (Number(l.qty) || 0) * (Number(l.rate) || 0),
+        }))
+      );
+
+      await createInvoice({
+        shipmentId,
+        customerId: selectedShipment.customerId,
+        subtotal,
+        taxRate: Number(taxRate) / 100,
+        date: issueDate || undefined,
+        notes: notes ? `${notes}\n${lineItemsJson}` : lineItemsJson,
+      });
+
+      onNavigate("invoices");
+    } catch (err) {
+      setSubmitError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -60,24 +122,52 @@ export default function GenerateInvoice({ onNavigate }) {
           <p className="text-xs text-gray-400">Finance / Invoices / New</p>
           <h1 className="text-xl font-semibold text-gray-900">Generate Invoice</h1>
         </div>
-        <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">
-          {invoiceNumber}
-        </span>
       </div>
 
+      {optionsError && (
+        <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-4 py-2 mb-4">
+          Failed to load customers/shipments: {optionsError}
+        </div>
+      )}
+      {submitError && (
+        <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-4 py-2 mb-4">
+          {submitError}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Client + dates */}
+        {/* Shipment + customer + date */}
         <div className="bg-white border border-gray-200 rounded-xl p-5 grid sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2">
             <label className="block text-xs font-medium text-gray-500 mb-1">
-              Client name
+              Shipment
+            </label>
+            <select
+              required
+              value={shipmentId}
+              onChange={(e) => setShipmentId(e.target.value)}
+              disabled={optionsLoading}
+              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="">
+                {optionsLoading ? "Loading shipments..." : "Select a shipment"}
+              </option>
+              {shipments.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.shipmentCode} — {s.origin} → {s.destination}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">
+              Client (from shipment)
             </label>
             <input
-              required
-              value={client}
-              onChange={(e) => setClient(e.target.value)}
-              placeholder="e.g. Apex Manufacturing"
-              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              readOnly
+              value={selectedCustomer?.name || ""}
+              placeholder="Select a shipment first"
+              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-gray-50"
             />
           </div>
           <div>
@@ -86,21 +176,8 @@ export default function GenerateInvoice({ onNavigate }) {
             </label>
             <input
               type="date"
-              required
               value={issueDate}
               onChange={(e) => setIssueDate(e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">
-              Due date
-            </label>
-            <input
-              type="date"
-              required
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
               className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
@@ -214,18 +291,12 @@ export default function GenerateInvoice({ onNavigate }) {
             Cancel
           </button>
           <button
-            type="button"
-            className="flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50"
-          >
-            <Save className="w-4 h-4" />
-            Save draft
-          </button>
-          <button
             type="submit"
-            className="flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800"
+            disabled={submitting}
+            className="flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50"
           >
             <Send className="w-4 h-4" />
-            Generate & send
+            {submitting ? "Generating..." : "Generate invoice"}
           </button>
         </div>
       </form>

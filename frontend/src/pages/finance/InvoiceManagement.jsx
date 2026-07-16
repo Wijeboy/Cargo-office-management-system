@@ -1,32 +1,70 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Download, Plus, Search, Calendar } from "lucide-react";
-
-const invoices = [
-  { id: "INV-1042", client: "Apex Manufacturing", issued: "Oct 20", due: "Oct 24", subtotal: "+$18,400", tax: "$1,363", total: "$18,400", status: "Paid" },
-  { id: "INV-1041", client: "Global Freight Co.", issued: "Oct 19", due: "Nov 03", subtotal: "$9,074", tax: "$726", total: "$9,800", status: "Pending" },
-  { id: "INV-1040", client: "Acme Logistics Inc.", issued: "Oct 18", due: "Nov 02", subtotal: "$11,250", tax: "$900", total: "$12,150", status: "Paid" },
-  { id: "INV-1039", client: "Harbor Shipping Ltd.", issued: "Oct 12", due: "Oct 27", subtotal: "$7,593", tax: "$607", total: "$8,200", status: "Overdue" },
-  { id: "INV-1038", client: "Pinnacle Trading Co", issued: "Oct 10", due: "Oct 25", subtotal: "$14,815", tax: "$1,185", total: "$16,000", status: "Paid" },
-  { id: "INV-1037", client: "Apex Manufacturing", issued: "Oct 20", due: "Oct 24", subtotal: "+$18,400", tax: "$1,363", total: "$18,400", status: "Paid" },
-  { id: "INV-1036", client: "Apex Manufacturing", issued: "Oct 20", due: "Oct 24", subtotal: "+$18,400", tax: "$1,363", total: "$18,400", status: "Paid" },
-  { id: "INV-1035", client: "Apex Manufacturing", issued: "Oct 20", due: "Oct 24", subtotal: "+$18,400", tax: "$1,383", total: "$18,400", status: "Paid" },
-];
+import { getInvoices } from "../../api/financeApi";
 
 const statusStyles = {
-  Paid: "bg-emerald-50 text-emerald-600",
-  Pending: "bg-amber-50 text-amber-600",
-  Overdue: "bg-rose-50 text-rose-600",
+  PAID: "bg-emerald-50 text-emerald-600",
+  PENDING: "bg-amber-50 text-amber-600",
+  PARTIALLY_PAID: "bg-amber-50 text-amber-600",
+  OVERDUE: "bg-rose-50 text-rose-600",
 };
 
-const filterTabs = ["All", "Paid", "Pending", "Overdue"];
+const filterTabs = ["All", "PAID", "PENDING", "PARTIALLY_PAID"];
+
+const currency = (n) =>
+  `$${Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+
+const formatDate = (d) =>
+  d ? new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—";
 
 export default function InvoiceManagement({ onNavigate }) {
   const [activeFilter, setActiveFilter] = useState("All");
+  const [search, setSearch] = useState("");
+  const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const filtered =
-    activeFilter === "All"
-      ? invoices
-      : invoices.filter((i) => i.status === activeFilter);
+  useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+    getInvoices()
+      .then((res) => {
+        if (isMounted) setInvoices(res.invoices || []);
+      })
+      .catch((err) => {
+        if (isMounted) setError(err.message);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const filtered = useMemo(() => {
+    let list = invoices;
+    if (activeFilter !== "All") {
+      list = list.filter((i) => i.paymentStatus === activeFilter);
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(
+        (i) =>
+          i.invoiceNo.toLowerCase().includes(q) ||
+          i.customer?.name?.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [invoices, activeFilter, search]);
+
+  const totals = useMemo(() => {
+    const totalInvoiced = invoices.reduce((sum, i) => sum + i.totalAmount, 0);
+    const paid = invoices.filter((i) => i.paymentStatus === "PAID").reduce((s, i) => s + i.totalAmount, 0);
+    const pending = invoices.filter((i) => i.paymentStatus === "PENDING").reduce((s, i) => s + i.totalAmount, 0);
+    const partial = invoices.filter((i) => i.paymentStatus === "PARTIALLY_PAID").reduce((s, i) => s + i.totalAmount, 0);
+    return { totalInvoiced, paid, pending, partial };
+  }, [invoices]);
 
   return (
     <div className="p-6 space-y-6">
@@ -41,7 +79,6 @@ export default function InvoiceManagement({ onNavigate }) {
             <Download className="w-4 h-4" />
             Export
           </button>
-                  {/* Link to the Generate Invoice page */}
           <button
             onClick={() => onNavigate("invoice-form")}
             className="flex items-center gap-1.5 text-sm font-medium px-3.5 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800"
@@ -52,12 +89,18 @@ export default function InvoiceManagement({ onNavigate }) {
         </div>
       </div>
 
+      {error && (
+        <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-4 py-2">
+          Failed to load invoices: {error}
+        </div>
+      )}
+
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <SummaryCard label="Total Invoiced" value="$327,100" valueColor="text-gray-900" />
-        <SummaryCard label="Paid" value="$284,920" valueColor="text-emerald-600" />
-        <SummaryCard label="Pending" value="$33,980" valueColor="text-amber-500" />
-        <SummaryCard label="Overdue" value="$8,200" valueColor="text-rose-600" />
+        <SummaryCard label="Total Invoiced" value={currency(totals.totalInvoiced)} valueColor="text-gray-900" />
+        <SummaryCard label="Paid" value={currency(totals.paid)} valueColor="text-emerald-600" />
+        <SummaryCard label="Pending" value={currency(totals.pending)} valueColor="text-amber-500" />
+        <SummaryCard label="Partially Paid" value={currency(totals.partial)} valueColor="text-amber-500" />
       </div>
 
       {/* Table card */}
@@ -68,6 +111,8 @@ export default function InvoiceManagement({ onNavigate }) {
             <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               placeholder="Search invoice or client..."
               className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
             />
@@ -89,7 +134,7 @@ export default function InvoiceManagement({ onNavigate }) {
                     : "bg-gray-100 text-gray-500 hover:bg-gray-200"
                 }`}
               >
-                {tab}
+                {tab.replace("_", " ")}
               </button>
             ))}
           </div>
@@ -102,58 +147,68 @@ export default function InvoiceManagement({ onNavigate }) {
               <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
                 <th className="px-4 py-2 font-medium">Invoice</th>
                 <th className="px-4 py-2 font-medium">Client</th>
-                <th className="px-4 py-2 font-medium">Issued</th>
-                <th className="px-4 py-2 font-medium">Due</th>
+                <th className="px-4 py-2 font-medium">Date</th>
                 <th className="px-4 py-2 font-medium text-right">Subtotal</th>
-                <th className="px-4 py-2 font-medium text-right">Tax 8%</th>
+                <th className="px-4 py-2 font-medium text-right">Tax</th>
                 <th className="px-4 py-2 font-medium text-right">Total</th>
                 <th className="px-4 py-2 font-medium text-right">Status</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((inv, idx) => (
-                <tr
-                  key={`${inv.id}-${idx}`}
-                  className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60"
-                >
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => onNavigate("invoice-form")}
-                      className="text-indigo-600 font-medium hover:underline"
-                    >
-                      {inv.id}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3 text-gray-900">{inv.client}</td>
-                  <td className="px-4 py-3 text-gray-500">{inv.issued}</td>
-                  <td className="px-4 py-3 text-gray-500">{inv.due}</td>
-                  <td className="px-4 py-3 text-right text-gray-700">{inv.subtotal}</td>
-                  <td className="px-4 py-3 text-right text-gray-700">{inv.tax}</td>
-                  <td className="px-4 py-3 text-right text-gray-900 font-medium">{inv.total}</td>
-                  <td className="px-4 py-3 text-right">
-                    <span
-                      className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${statusStyles[inv.status]}`}
-                    >
-                      {inv.status}
-                    </span>
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-6 text-center text-gray-400 text-sm">
+                    Loading invoices…
                   </td>
                 </tr>
-              ))}
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-6 text-center text-gray-400 text-sm">
+                    No invoices found.
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((inv) => (
+                  <tr
+                    key={inv.id}
+                    className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60"
+                  >
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => onNavigate("invoice-form")}
+                        className="text-indigo-600 font-medium hover:underline"
+                      >
+                        {inv.invoiceNo}
+                      </button>
+                    </td>
+                    <td className="px-4 py-3 text-gray-900">{inv.customer?.name || "—"}</td>
+                    <td className="px-4 py-3 text-gray-500">{formatDate(inv.date)}</td>
+                    <td className="px-4 py-3 text-right text-gray-700">
+                      {currency(inv.totalAmount - inv.tax)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-gray-700">{currency(inv.tax)}</td>
+                    <td className="px-4 py-3 text-right text-gray-900 font-medium">
+                      {currency(inv.totalAmount)}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <span
+                        className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${
+                          statusStyles[inv.paymentStatus] || "bg-gray-50 text-gray-600"
+                        }`}
+                      >
+                        {inv.paymentStatus.replace("_", " ")}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
         {/* Footer */}
         <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-          <p className="text-xs text-gray-400">Showing 8 of 428 shipments</p>
-          <div className="flex items-center gap-2">
-            <button className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50">
-              Prev
-            </button>
-            <button className="text-xs font-medium px-3 py-1.5 rounded-lg bg-gray-900 text-white hover:bg-gray-800">
-              Next
-            </button>
-          </div>
+          <p className="text-xs text-gray-400">Showing {filtered.length} of {invoices.length} invoices</p>
         </div>
       </div>
     </div>

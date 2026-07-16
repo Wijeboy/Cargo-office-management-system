@@ -27,6 +27,41 @@ function round2(num) {
 }
 
 /**
+ * GET /api/invoices/meta/options
+ * Lightweight lookup data for the "Generate Invoice" form dropdowns —
+ * returns the list of customers and shipments so the frontend can let
+ * the user pick real IDs instead of typing free text.
+ */
+export async function getInvoiceFormOptions(req, res) {
+  try {
+    const [customers, shipments] = await Promise.all([
+      prisma.customer.findMany({
+        select: { id: true, name: true, company: true, email: true },
+        orderBy: { name: 'asc' },
+      }),
+      prisma.shipment.findMany({
+        select: { id: true, shipmentCode: true, origin: true, destination: true, customerId: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    return res.json({
+      status: 'success',
+      customers,
+      shipments,
+    });
+  } catch (error) {
+    console.error('Error fetching invoice form options:', error);
+    return res.status(500).json({
+      status: 500,
+      error: 'Internal Server Error',
+      message: 'Failed to load form options.',
+      details: error.message,
+    });
+  }
+}
+
+/**
  * Get all invoices.
  */
 export async function getAllInvoices(req, res) {
