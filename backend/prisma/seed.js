@@ -104,6 +104,12 @@ async function main() {
       description: 'Cross-Country Freight & Server Components',
       status: 'IN_TRANSIT',
       dispatchDate: new Date('2026-07-01T09:00:00Z'),
+      senderName: 'Apex Manufacturing',
+      senderContact: '+1 (555) 019-2834',
+      senderAddress: '451 Industrial Parkway, Detroit, MI 48201',
+      consigneeName: 'West Coast Distribution Center',
+      consigneeContact: '+1 (555) 442-7890',
+      consigneeAddress: '9200 Freight Way, Los Angeles, CA 90001',
     }
   });
 
@@ -119,6 +125,12 @@ async function main() {
       status: 'DELIVERED',
       dispatchDate: new Date('2026-07-02T10:00:00Z'),
       deliveryDate: new Date('2026-07-05T14:30:00Z'),
+      senderName: 'Global Freight Co.',
+      senderContact: '+1 (555) 987-6543',
+      senderAddress: '88 Maritime Blvd, Miami, FL 33101',
+      consigneeName: 'Miami Regional Warehouse',
+      consigneeContact: '+1 (555) 221-3345',
+      consigneeAddress: '500 Port Access Road, Miami, FL 33122',
     }
   });
 
