@@ -1,92 +1,78 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Download, Plus, Search, Calendar, Printer } from "lucide-react";
+import { getInvoices } from "../../api/financeApi";
 
 const statusStyles = {
   PAID: "bg-emerald-50 text-emerald-600",
   PENDING: "bg-amber-50 text-amber-600",
+  PARTIALLY_PAID: "bg-amber-50 text-amber-600",
   OVERDUE: "bg-rose-50 text-rose-600",
 };
 
-const filterTabs = ["All", "Paid", "Pending", "Overdue"];
+const filterTabs = ["All", "PAID", "PENDING", "PARTIALLY_PAID"];
+
+const currency = (n) =>
+  Number(n || 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
+
+const formatDate = (d) =>
+  d ? new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—";
+
+const getDueDateString = (invoiceDate) => {
+  if (!invoiceDate) return "N/A";
+  const date = new Date(invoiceDate);
+  date.setDate(date.getDate() + 30); // Default Net 30
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+};
 
 export default function InvoiceManagement({ onNavigate }) {
+  const [activeFilter, setActiveFilter] = useState("All");
+  const [search, setSearch] = useState("");
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeFilter, setActiveFilter] = useState("All");
-  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    const fetchInvoices = async () => {
-      try {
-        setLoading(true);
-        const token = localStorage.getItem('lf_token');
-        const response = await fetch('http://localhost:5001/api/invoices', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        if (!response.ok) {
-          throw new Error('Failed to load invoices from database.');
-        }
-        const data = await response.json();
-        setInvoices(data.invoices || []);
-      } catch (err) {
-        console.error(err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
+    let isMounted = true;
+    setLoading(true);
+    getInvoices()
+      .then((res) => {
+        if (isMounted) setInvoices(res.invoices || []);
+      })
+      .catch((err) => {
+        if (isMounted) setError(err.message);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+    return () => {
+      isMounted = false;
     };
-    fetchInvoices();
   }, []);
 
-  // Filtering & Search
-  const filtered = invoices.filter((inv) => {
-    // 1. Status Filter
-    const matchesStatus =
-      activeFilter === "All" ||
-      inv.paymentStatus?.toUpperCase() === activeFilter.toUpperCase();
+  const filtered = useMemo(() => {
+    let list = invoices;
+    if (activeFilter !== "All") {
+      list = list.filter((i) => i.paymentStatus?.toUpperCase() === activeFilter);
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(
+        (i) =>
+          i.invoiceNo?.toLowerCase().includes(q) ||
+          i.customer?.name?.toLowerCase().includes(q) ||
+          i.customer?.company?.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [invoices, activeFilter, search]);
 
-    // 2. Search Term Filter (Invoice Number, Client Name, Company)
-    const matchesSearch =
-      inv.invoiceNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      inv.customer?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      inv.customer?.company?.toLowerCase().includes(searchTerm.toLowerCase());
-
-    return matchesStatus && matchesSearch;
-  });
-
-  // Calculate totals
-  const totalInvoiced = invoices.reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
-  const totalPaid = invoices.filter(inv => inv.paymentStatus?.toUpperCase() === 'PAID')
-                            .reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
-  const totalPending = invoices.filter(inv => inv.paymentStatus?.toUpperCase() === 'PENDING')
-                              .reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
-  const totalOverdue = invoices.filter(inv => inv.paymentStatus?.toUpperCase() === 'OVERDUE')
-                              .reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
-
-  const formatCurrency = (amount) => {
-    return amount.toLocaleString("en-US", { style: "currency", currency: "USD" });
-  };
-
-  const getDueDateString = (invoiceDate) => {
-    if (!invoiceDate) return 'N/A';
-    const date = new Date(invoiceDate);
-    date.setDate(date.getDate() + 30); // Default Net 30
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  };
-
-  if (loading) {
-    return (
-      <div className="flex h-96 items-center justify-center bg-gray-50">
-        <div className="flex flex-col items-center gap-3">
-          <span className="material-symbols-outlined animate-spin text-3xl text-indigo-600">progress_activity</span>
-          <p className="text-gray-500 font-medium text-sm">Loading invoices...</p>
-        </div>
-      </div>
-    );
-  }
+  const totals = useMemo(() => {
+    const totalInvoiced = invoices.reduce((sum, i) => sum + (i.totalAmount || 0), 0);
+    const paid = invoices.filter((i) => i.paymentStatus?.toUpperCase() === "PAID").reduce((s, i) => s + i.totalAmount, 0);
+    const pending = invoices.filter((i) => i.paymentStatus?.toUpperCase() === "PENDING").reduce((s, i) => s + i.totalAmount, 0);
+    const partial = invoices.filter((i) => i.paymentStatus?.toUpperCase() === "PARTIALLY_PAID").reduce((s, i) => s + i.totalAmount, 0);
+    return { totalInvoiced, paid, pending, partial };
+  }, [invoices]);
 
   return (
     <div className="p-6 space-y-6">
@@ -111,12 +97,18 @@ export default function InvoiceManagement({ onNavigate }) {
         </div>
       </div>
 
+      {error && (
+        <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-4 py-2">
+          Failed to load invoices: {error}
+        </div>
+      )}
+
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <SummaryCard label="Total Invoiced" value={formatCurrency(totalInvoiced)} valueColor="text-gray-900" />
-        <SummaryCard label="Paid" value={formatCurrency(totalPaid)} valueColor="text-emerald-600" />
-        <SummaryCard label="Pending" value={formatCurrency(totalPending)} valueColor="text-amber-500" />
-        <SummaryCard label="Overdue" value={formatCurrency(totalOverdue)} valueColor="text-rose-600" />
+        <SummaryCard label="Total Invoiced" value={currency(totals.totalInvoiced)} valueColor="text-gray-900" />
+        <SummaryCard label="Paid" value={currency(totals.paid)} valueColor="text-emerald-600" />
+        <SummaryCard label="Pending" value={currency(totals.pending)} valueColor="text-amber-500" />
+        <SummaryCard label="Partially Paid" value={currency(totals.partial)} valueColor="text-amber-500" />
       </div>
 
       {/* Table card */}
@@ -127,9 +119,9 @@ export default function InvoiceManagement({ onNavigate }) {
             <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               placeholder="Search invoice or client..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
             />
           </div>
@@ -150,7 +142,7 @@ export default function InvoiceManagement({ onNavigate }) {
                     : "bg-gray-100 text-gray-500 hover:bg-gray-200"
                 }`}
               >
-                {tab}
+                {tab.replace("_", " ")}
               </button>
             ))}
           </div>
@@ -158,29 +150,36 @@ export default function InvoiceManagement({ onNavigate }) {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          {filtered.length === 0 ? (
-            <div className="text-center py-12 text-gray-400">
-              No invoices found matching current criteria.
-            </div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
-                  <th className="px-4 py-3 font-medium">Invoice</th>
-                  <th className="px-4 py-3 font-medium">Client</th>
-                  <th className="px-4 py-3 font-medium">Issued</th>
-                  <th className="px-4 py-3 font-medium">Due (Net 30)</th>
-                  <th className="px-4 py-3 font-medium text-right">Subtotal</th>
-                  <th className="px-4 py-3 font-medium text-right">Tax</th>
-                  <th className="px-4 py-3 font-medium text-right">Total</th>
-                  <th className="px-4 py-3 font-medium text-right">Status</th>
-                  <th className="px-4 py-3 font-medium text-right">Receipt</th>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
+                <th className="px-4 py-3 font-medium">Invoice</th>
+                <th className="px-4 py-3 font-medium">Client</th>
+                <th className="px-4 py-3 font-medium">Issued</th>
+                <th className="px-4 py-3 font-medium">Due (Net 30)</th>
+                <th className="px-4 py-3 font-medium text-right">Subtotal</th>
+                <th className="px-4 py-3 font-medium text-right">Tax</th>
+                <th className="px-4 py-3 font-medium text-right">Total</th>
+                <th className="px-4 py-3 font-medium text-right">Status</th>
+                <th className="px-4 py-3 font-medium text-right">Receipt</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={9} className="px-4 py-6 text-center text-gray-400 text-sm">
+                    Loading invoices…
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {filtered.map((inv) => {
-                  const status = inv.paymentStatus?.toUpperCase() || 'PAID';
-                  const formattedStatus = status.charAt(0) + status.slice(1).toLowerCase();
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="px-4 py-6 text-center text-gray-400 text-sm">
+                    No invoices found.
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((inv) => {
+                  const status = inv.paymentStatus?.toUpperCase() || "PENDING";
                   const invoiceSubtotal = (inv.totalAmount || 0) - (inv.tax || 0);
 
                   return (
@@ -190,42 +189,38 @@ export default function InvoiceManagement({ onNavigate }) {
                     >
                       <td className="px-4 py-3.5">
                         <button
-                          onClick={() => onNavigate("invoice-detail", { invoice: inv })}
+                          onClick={() => onNavigate("invoice-form")}
                           className="text-indigo-600 font-semibold hover:underline"
                         >
                           {inv.invoiceNo}
                         </button>
                       </td>
                       <td className="px-4 py-3.5">
-                        <div className="font-medium text-gray-900">{inv.customer?.name}</div>
+                        <div className="font-medium text-gray-900">{inv.customer?.name || "—"}</div>
                         {inv.customer?.company && (
                           <div className="text-[11px] text-gray-400">{inv.customer.company}</div>
                         )}
                       </td>
-                      <td className="px-4 py-3.5 text-gray-500">
-                        {new Date(inv.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                      </td>
-                      <td className="px-4 py-3.5 text-gray-500">
-                        {getDueDateString(inv.date)}
-                      </td>
+                      <td className="px-4 py-3.5 text-gray-500">{formatDate(inv.date)}</td>
+                      <td className="px-4 py-3.5 text-gray-500">{getDueDateString(inv.date)}</td>
                       <td className="px-4 py-3.5 text-right text-gray-700 font-medium">
-                        {formatCurrency(invoiceSubtotal)}
+                        {currency(invoiceSubtotal)}
                       </td>
-                      <td className="px-4 py-3.5 text-right text-gray-700">
-                        {formatCurrency(inv.tax || 0)}
-                      </td>
+                      <td className="px-4 py-3.5 text-right text-gray-700">{currency(inv.tax)}</td>
                       <td className="px-4 py-3.5 text-right text-gray-900 font-bold">
-                        {formatCurrency(inv.totalAmount || 0)}
+                        {currency(inv.totalAmount)}
                       </td>
                       <td className="px-4 py-3.5 text-right">
                         <span
-                          className={`inline-block text-xs font-semibold px-2.5 py-0.5 rounded-full ${statusStyles[status] || 'bg-gray-150 text-gray-600'}`}
+                          className={`inline-block text-xs font-semibold px-2.5 py-0.5 rounded-full ${
+                            statusStyles[status] || "bg-gray-50 text-gray-600"
+                          }`}
                         >
-                          {formattedStatus}
+                          {status.replace("_", " ")}
                         </span>
                       </td>
                       <td className="px-4 py-3.5 text-right">
-                        {status === 'PAID' && (
+                        {status === "PAID" && (
                           <button
                             onClick={() => onNavigate("print-receipt", { invoice: inv })}
                             className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50"
@@ -237,23 +232,15 @@ export default function InvoiceManagement({ onNavigate }) {
                       </td>
                     </tr>
                   );
-                })}
-              </tbody>
-            </table>
-          )}
+                })
+              )}
+            </tbody>
+          </table>
         </div>
 
         {/* Footer */}
         <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
           <p className="text-xs text-gray-400">Showing {filtered.length} of {invoices.length} invoices</p>
-          <div className="flex items-center gap-2">
-            <button className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50">
-              Prev
-            </button>
-            <button className="text-xs font-medium px-3 py-1.5 rounded-lg bg-gray-900 text-white hover:bg-gray-800">
-              Next
-            </button>
-          </div>
         </div>
       </div>
     </div>

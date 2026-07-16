@@ -3,6 +3,7 @@ import {
   getAllInvoices,
   getInvoiceById,
   getInvoiceByNo,
+  getInvoiceFormOptions,
   createInvoice,
   updateInvoice,
   deleteInvoice,
@@ -14,6 +15,9 @@ const router = express.Router();
 
 // Apply auth token requirement to all invoice routes
 router.use(authenticateToken);
+
+// IMPORTANT: this must come before '/:id' or it will be swallowed by it
+router.get('/meta/options', getInvoiceFormOptions);
 
 router.get('/', getAllInvoices);
 router.get('/:id/receipt', getInvoiceReceipt);

@@ -113,6 +113,7 @@ export async function getDashboardSummary(req, res) {
 }
 
 /**
+ * GET /api/finance/reports/revenue?startDate=&endDate=
  * Revenue report grouped by payment method, based on completed payments.
  */
 export async function getRevenueReport(req, res) {
@@ -171,6 +172,7 @@ export async function getRevenueReport(req, res) {
 }
 
 /**
+ * GET /api/finance/reports/expenses?startDate=&endDate=&category=
  * Expense report grouped by category.
  */
 export async function getExpenseReport(req, res) {
@@ -223,6 +225,7 @@ export async function getExpenseReport(req, res) {
 }
 
 /**
+ * GET /api/finance/reports/profit-loss?startDate=&endDate=
  * Profit & Loss report: revenue vs expenses for a period.
  */
 export async function getProfitLossReport(req, res) {
