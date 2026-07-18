@@ -1,3 +1,5 @@
-**/node_modules/
-**/dist/
-.vite/
+node_modules/
+backend/node_modules/
+*.db
+backend/prisma/dev.db
+.env
