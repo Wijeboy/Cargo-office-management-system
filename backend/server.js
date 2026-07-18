@@ -1,6 +1,4 @@
-<<<<<<< HEAD
 ﻿import './src/server.js';
-=======
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -86,8 +84,8 @@ app.use((err, req, res, next) => {
 
 // Start server
 const server = app.listen(port, () => {
-  console.log(`🚀 Server is running on port ${port}`);
-  console.log(`👉 Health check: http://localhost:${port}/api/health`);
+  console.log(` Server is running on port ${port}`);
+  console.log(` Health check: http://localhost:${port}/api/health`);
 });
 
 // Handle graceful shutdown
@@ -103,4 +101,3 @@ const gracefulShutdown = async () => {
 
 process.on('SIGTERM', gracefulShutdown);
 process.on('SIGINT', gracefulShutdown);
->>>>>>> 39e42b38ca42cfbf8821c79b252ff8c42727cdde
