@@ -968,3 +968,501 @@ export async function getShipmentHistory(req, res) {
     });
   }
 }
+
+function getIncomingTone(status) {
+  switch (status) {
+    case 'In Transit': return 'yellow';
+    case 'Delayed': return 'red';
+    case 'Arriving Soon': return 'blue';
+    case 'Received': return 'green';
+    default: return '';
+  }
+}
+
+function formatIncomingCargo(cargo) {
+  const date = cargo.expectedArrival ? new Date(cargo.expectedArrival) : null;
+  const dateLabel = date 
+    ? date.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+    : 'N/A';
+
+  return {
+    id: cargo.id,
+    cargoCode: cargo.cargoCode,
+    status: cargo.status,
+    company: cargo.senderCompany,
+    from: cargo.origin,
+    dateLabel,
+    item: cargo.itemName,
+    quantity: cargo.quantity,
+    quantityLabel: `${cargo.quantity} ${cargo.quantityUnit || 'units'}`,
+    weight: cargo.weight,
+    weightLabel: `${cargo.weight} ${cargo.weightUnit || 'kg'}`,
+    progress: cargo.progress,
+    tone: getIncomingTone(cargo.status),
+    expectedArrival: cargo.expectedArrival ? cargo.expectedArrival.toISOString() : null,
+    senderCompany: cargo.senderCompany,
+    origin: cargo.origin,
+    itemName: cargo.itemName,
+  };
+}
+
+function formatOutgoingCargo(cargo) {
+  const date = cargo.shipDate ? new Date(cargo.shipDate) : null;
+  const shipDateLabel = date 
+    ? date.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+    : 'N/A';
+
+  return {
+    id: cargo.id,
+    shipmentCode: cargo.shipmentCode,
+    consignee: cargo.consignee,
+    destination: cargo.destination,
+    itemName: cargo.itemName,
+    quantity: cargo.quantity,
+    weight: cargo.weight,
+    shipDate: cargo.shipDate ? cargo.shipDate.toISOString() : null,
+    status: cargo.status,
+    trackingId: cargo.trackingId,
+    tableRow: [
+      cargo.shipmentCode,
+      cargo.consignee,
+      cargo.destination,
+      cargo.itemName,
+      `${cargo.weight} ${cargo.weightUnit || 'kg'}`,
+      shipDateLabel,
+      cargo.status,
+      cargo.trackingId
+    ]
+  };
+}
+
+export async function getIncomingCargoStats(req, res) {
+  try {
+    const cargoList = await prisma.incomingCargo.findMany();
+    const totalIncoming = cargoList.length;
+    const inTransit = cargoList.filter(c => c.status === 'In Transit').length;
+    const arrivingSoon = cargoList.filter(c => c.status === 'Arriving Soon').length;
+    const delayed = cargoList.filter(c => c.status === 'Delayed').length;
+
+    return res.json({
+      status: 'success',
+      stats: {
+        totalIncoming,
+        inTransit,
+        arrivingSoon,
+        delayed
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: 500,
+      error: 'Internal Server Error',
+      message: 'Failed to fetch incoming cargo stats.',
+      details: error.message
+    });
+  }
+}
+
+export async function listIncomingCargo(req, res) {
+  try {
+    const { search = '' } = req.query;
+    const where = search ? {
+      OR: [
+        { cargoCode: { contains: search } },
+        { senderCompany: { contains: search } },
+        { itemName: { contains: search } },
+        { origin: { contains: search } }
+      ]
+    } : {};
+
+    const cargoList = await prisma.incomingCargo.findMany({
+      where,
+      orderBy: { createdAt: 'desc' }
+    });
+
+    return res.json({
+      status: 'success',
+      cargo: cargoList.map(formatIncomingCargo)
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: 500,
+      error: 'Internal Server Error',
+      message: 'Failed to fetch incoming cargo list.',
+      details: error.message
+    });
+  }
+}
+
+export async function getIncomingCargo(req, res) {
+  try {
+    const cargo = await prisma.incomingCargo.findUnique({
+      where: { id: req.params.id }
+    });
+    if (!cargo) {
+      return res.status(404).json({
+        status: 404,
+        error: 'Not Found',
+        message: 'Incoming cargo not found.'
+      });
+    }
+    return res.json({
+      status: 'success',
+      cargo: formatIncomingCargo(cargo)
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: 500,
+      error: 'Internal Server Error',
+      message: 'Failed to fetch incoming cargo.',
+      details: error.message
+    });
+  }
+}
+
+export async function createIncomingCargo(req, res) {
+  const { cargoCode, senderCompany, origin, itemName, quantity, weight, expectedArrival, status, progress } = req.body;
+  if (!cargoCode || !senderCompany || !origin || !itemName) {
+    return res.status(400).json({
+      status: 400,
+      error: 'Bad Request',
+      message: 'Cargo code, sender company, origin, and item name are required.'
+    });
+  }
+  try {
+    const existing = await prisma.incomingCargo.findUnique({
+      where: { cargoCode }
+    });
+    if (existing) {
+      return res.status(409).json({
+        status: 409,
+        error: 'Conflict',
+        message: 'Cargo code already exists.'
+      });
+    }
+    const cargo = await prisma.incomingCargo.create({
+      data: {
+        cargoCode,
+        senderCompany,
+        origin,
+        itemName,
+        quantity: parseNumber(quantity),
+        weight: parseNumber(weight),
+        expectedArrival: expectedArrival ? new Date(expectedArrival) : null,
+        status: status || 'In Transit',
+        progress: parseNumber(progress)
+      }
+    });
+    return res.status(201).json({
+      status: 'success',
+      cargo: formatIncomingCargo(cargo)
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: 500,
+      error: 'Internal Server Error',
+      message: 'Failed to create incoming cargo.',
+      details: error.message
+    });
+  }
+}
+
+export async function updateIncomingCargo(req, res) {
+  try {
+    const cargo = await prisma.incomingCargo.findUnique({
+      where: { id: req.params.id }
+    });
+    if (!cargo) {
+      return res.status(404).json({
+        status: 404,
+        error: 'Not Found',
+        message: 'Incoming cargo not found.'
+      });
+    }
+
+    const data = {};
+    const fields = ['cargoCode', 'senderCompany', 'origin', 'itemName', 'status'];
+    for (const field of fields) {
+      if (req.body[field] !== undefined) {
+        data[field] = req.body[field];
+      }
+    }
+    if (req.body.quantity !== undefined) {
+      data.quantity = parseNumber(req.body.quantity);
+    }
+    if (req.body.weight !== undefined) {
+      data.weight = parseNumber(req.body.weight);
+    }
+    if (req.body.progress !== undefined) {
+      data.progress = parseNumber(req.body.progress);
+    }
+    if (req.body.expectedArrival !== undefined) {
+      data.expectedArrival = req.body.expectedArrival ? new Date(req.body.expectedArrival) : null;
+    }
+
+    const updated = await prisma.incomingCargo.update({
+      where: { id: req.params.id },
+      data
+    });
+    return res.json({
+      status: 'success',
+      cargo: formatIncomingCargo(updated)
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: 500,
+      error: 'Internal Server Error',
+      message: 'Failed to update incoming cargo.',
+      details: error.message
+    });
+  }
+}
+
+export async function deleteIncomingCargo(req, res) {
+  try {
+    const cargo = await prisma.incomingCargo.findUnique({
+      where: { id: req.params.id }
+    });
+    if (!cargo) {
+      return res.status(404).json({
+        status: 404,
+        error: 'Not Found',
+        message: 'Incoming cargo not found.'
+      });
+    }
+    await prisma.incomingCargo.delete({
+      where: { id: req.params.id }
+    });
+    return res.json({
+      status: 'success',
+      message: 'Incoming cargo deleted successfully.'
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: 500,
+      error: 'Internal Server Error',
+      message: 'Failed to delete incoming cargo.',
+      details: error.message
+    });
+  }
+}
+
+export async function getOutgoingCargoStats(req, res) {
+  try {
+    const cargoList = await prisma.outgoingCargo.findMany();
+    const totalOutgoing = cargoList.length;
+    const processing = cargoList.filter(c => c.status === 'Processing').length;
+    const inTransit = cargoList.filter(c => c.status === 'In Transit').length;
+    const delivered = cargoList.filter(c => c.status === 'Delivered').length;
+
+    return res.json({
+      status: 'success',
+      stats: {
+        totalOutgoing,
+        processing,
+        inTransit,
+        delivered
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: 500,
+      error: 'Internal Server Error',
+      message: 'Failed to fetch outgoing cargo stats.',
+      details: error.message
+    });
+  }
+}
+
+export async function listOutgoingCargo(req, res) {
+  try {
+    const { search = '' } = req.query;
+    const where = search ? {
+      OR: [
+        { shipmentCode: { contains: search } },
+        { consignee: { contains: search } },
+        { destination: { contains: search } },
+        { itemName: { contains: search } },
+        { trackingId: { contains: search } }
+      ]
+    } : {};
+
+    const cargoList = await prisma.outgoingCargo.findMany({
+      where,
+      orderBy: { createdAt: 'desc' }
+    });
+
+    return res.json({
+      status: 'success',
+      cargo: cargoList.map(formatOutgoingCargo)
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: 500,
+      error: 'Internal Server Error',
+      message: 'Failed to fetch outgoing cargo list.',
+      details: error.message
+    });
+  }
+}
+
+export async function getOutgoingCargo(req, res) {
+  try {
+    const cargo = await prisma.outgoingCargo.findUnique({
+      where: { id: req.params.id }
+    });
+    if (!cargo) {
+      return res.status(404).json({
+        status: 404,
+        error: 'Not Found',
+        message: 'Outgoing cargo not found.'
+      });
+    }
+    return res.json({
+      status: 'success',
+      cargo: formatOutgoingCargo(cargo)
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: 500,
+      error: 'Internal Server Error',
+      message: 'Failed to fetch outgoing cargo.',
+      details: error.message
+    });
+  }
+}
+
+export async function createOutgoingCargo(req, res) {
+  const { shipmentCode, consignee, destination, itemName, quantity, weight, shipDate, status, trackingId } = req.body;
+  if (!shipmentCode || !consignee || !destination || !itemName || !trackingId) {
+    return res.status(400).json({
+      status: 400,
+      error: 'Bad Request',
+      message: 'Shipment code, consignee, destination, item name, and tracking ID are required.'
+    });
+  }
+  try {
+    const existingCode = await prisma.outgoingCargo.findUnique({
+      where: { shipmentCode }
+    });
+    if (existingCode) {
+      return res.status(409).json({
+        status: 409,
+        error: 'Conflict',
+        message: 'Shipment code already exists.'
+      });
+    }
+    const existingTracking = await prisma.outgoingCargo.findUnique({
+      where: { trackingId }
+    });
+    if (existingTracking) {
+      return res.status(409).json({
+        status: 409,
+        error: 'Conflict',
+        message: 'Tracking ID already exists.'
+      });
+    }
+
+    const cargo = await prisma.outgoingCargo.create({
+      data: {
+        shipmentCode,
+        consignee,
+        destination,
+        itemName,
+        quantity: parseNumber(quantity),
+        weight: parseNumber(weight),
+        shipDate: shipDate ? new Date(shipDate) : null,
+        status: status || 'Processing',
+        trackingId
+      }
+    });
+    return res.status(201).json({
+      status: 'success',
+      cargo: formatOutgoingCargo(cargo)
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: 500,
+      error: 'Internal Server Error',
+      message: 'Failed to create outgoing cargo.',
+      details: error.message
+    });
+  }
+}
+
+export async function updateOutgoingCargo(req, res) {
+  try {
+    const cargo = await prisma.outgoingCargo.findUnique({
+      where: { id: req.params.id }
+    });
+    if (!cargo) {
+      return res.status(404).json({
+        status: 404,
+        error: 'Not Found',
+        message: 'Outgoing cargo not found.'
+      });
+    }
+
+    const data = {};
+    const fields = ['shipmentCode', 'consignee', 'destination', 'itemName', 'status', 'trackingId'];
+    for (const field of fields) {
+      if (req.body[field] !== undefined) {
+        data[field] = req.body[field];
+      }
+    }
+    if (req.body.quantity !== undefined) {
+      data.quantity = parseNumber(req.body.quantity);
+    }
+    if (req.body.weight !== undefined) {
+      data.weight = parseNumber(req.body.weight);
+    }
+    if (req.body.shipDate !== undefined) {
+      data.shipDate = req.body.shipDate ? new Date(req.body.shipDate) : null;
+    }
+
+    const updated = await prisma.outgoingCargo.update({
+      where: { id: req.params.id },
+      data
+    });
+    return res.json({
+      status: 'success',
+      cargo: formatOutgoingCargo(updated)
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: 500,
+      error: 'Internal Server Error',
+      message: 'Failed to update outgoing cargo.',
+      details: error.message
+    });
+  }
+}
+
+export async function deleteOutgoingCargo(req, res) {
+  try {
+    const cargo = await prisma.outgoingCargo.findUnique({
+      where: { id: req.params.id }
+    });
+    if (!cargo) {
+      return res.status(404).json({
+        status: 404,
+        error: 'Not Found',
+        message: 'Outgoing cargo not found.'
+      });
+    }
+    await prisma.outgoingCargo.delete({
+      where: { id: req.params.id }
+    });
+    return res.json({
+      status: 'success',
+      message: 'Outgoing cargo deleted successfully.'
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: 500,
+      error: 'Internal Server Error',
+      message: 'Failed to delete outgoing cargo.',
+      details: error.message
+    });
+  }
+}

@@ -1,0 +1,31 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "5001:5000"
+    environment:
+      - DATABASE_URL=file:./dev.db
+      - JWT_SECRET=logiflow-super-secret-jwt-key-2024-cargo-management
+      - JWT_EXPIRES_IN=7d
+      - NODE_ENV=production
+    volumes:
+      - prisma_data:/app/prisma
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+  admin:
+    build: ./admin
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  prisma_data:
